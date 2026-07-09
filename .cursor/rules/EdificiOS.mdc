@@ -1,0 +1,13 @@
+---
+alwaysApply: true
+---
+
+Este proyecto sigue Clean Architecture.
+
+Nunca mover lógica de negocio al Controller.
+
+Nunca importar NestJS dentro del dominio.
+
+Nunca agregar infraestructura no solicitada.
+
+Leer AI_CONTEXT.md antes de proponer cambios.
