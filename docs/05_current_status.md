@@ -53,3 +53,31 @@ Backlog heredado de la revisión de arquitectura (P1)
 - Errores HTTP tipados (404 / 409)
 - Concurrencia optimista en updateProjection
 - Definición explícita Flow vs Incident en glosario
+
+9/7/26 - 11:48 Actualizacion del projecto e historial de seguimiento--
+
+Sprint 0
+✔ Walking Skeleton
+✔ Event Log
+✔ Outbox
+✔ Incident Projection
+✔ Fitness Tests
+
+Sprint 1
+✔ Incident Aggregate
+✔ Incident Lifecycle
+✔ Replay
+✔ Guards
+✔ Integration Tests
+
+Sprint 2
+
+PR1
+✔ Evidence Domain
+
+PR2
+✔ Evidence Persistence
+✔ File Storage
+✔ StorageReference
+✔ MimeType
+✔ SHA256
