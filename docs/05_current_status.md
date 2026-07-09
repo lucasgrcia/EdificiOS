@@ -18,20 +18,38 @@ Completado
 
 ✔ Integration Test
 
+Sprint 1
+
+Completado
+
+✔ Incident Lifecycle (DETECTED → ASSIGNED → IN_PROGRESS → RESOLVED)
+
+✔ Transiciones validadas en dominio con un DomainEvent por transición
+
+✔ Persistencia transaccional (incidents + events + outbox)
+
+✔ Endpoints HTTP del ciclo de vida
+
+✔ Integration Tests (transiciones válidas e inválidas)
+
+✔ Replay del agregado desde Domain Events
+
+Eventos validados del ciclo de vida
+
+- workflow.flow.detected
+- workflow.flow.assigned
+- workflow.flow.execution_started
+- workflow.flow.resolved
+
 Próximo Sprint
 
-Incident Lifecycle
+Sprint 2
 
-Objetivo:
+Pendiente de definición.
 
-Implementar transición
+Backlog heredado de la revisión de arquitectura (P1)
 
-DETECTED
-
-↓
-
-ASSIGNED
-
-↓
-
-IN_PROGRESS
+- Proyección derivada del dominio o del evento emitido
+- Errores HTTP tipados (404 / 409)
+- Concurrencia optimista en updateProjection
+- Definición explícita Flow vs Incident en glosario

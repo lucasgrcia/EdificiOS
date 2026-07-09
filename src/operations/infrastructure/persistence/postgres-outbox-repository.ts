@@ -3,7 +3,7 @@ import { PoolClient } from 'pg';
 import {
   OutboxRecord,
   OutboxRepository,
-} from '../../application/detect-incident-use-case';
+} from '../../application/incident-persistence';
 
 export class PostgresOutboxRepository implements OutboxRepository {
   constructor(private readonly client: PoolClient) {}

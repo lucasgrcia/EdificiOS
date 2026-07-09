@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import {
   Transaction,
   TransactionRunner,
-} from '../../application/detect-incident-use-case';
+} from '../../application/incident-persistence';
 import { PostgresFlowEventRepository } from './postgres-flow-event-repository';
 import { PostgresIncidentRepository } from './postgres-incident-repository';
 import { PostgresOperationsPool } from './postgres-operations-pool';

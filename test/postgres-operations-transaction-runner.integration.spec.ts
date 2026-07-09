@@ -28,6 +28,7 @@ describe('PostgresOperationsTransactionRunner integration', () => {
           id: '00000000-0000-0000-0000-000000000001',
           description: 'Carlos detects a leak.',
           currentProjectionState: {
+            status: 'DETECTED',
             description: 'Carlos detects a leak.',
             detectedAt: '2026-07-07T15:00:00.000Z',
           },

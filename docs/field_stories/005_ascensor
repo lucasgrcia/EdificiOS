@@ -59,9 +59,10 @@ Las transiciones del trabajo deben quedar respaldadas por hechos observables y n
 - workflow.flow.detected
 - workflow.flow.assigned
 - workflow.flow.execution_started
+- workflow.flow.resolved
 
 ---
 
 ## Estado de validación
 
-🟡 Hipótesis pendiente
+🟢 Ciclo de vida completo validado (detección → asignación → ejecución → resolución)

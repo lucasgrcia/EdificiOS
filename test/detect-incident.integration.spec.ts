@@ -1,11 +1,11 @@
+import { DetectIncidentUseCase } from '../src/operations/application/detect-incident-use-case';
 import {
-  DetectIncidentUseCase,
   FlowEventRecord,
   IncidentRecord,
   OutboxRecord,
   Transaction,
   TransactionRunner,
-} from '../src/operations/application/detect-incident-use-case';
+} from '../src/operations/application/incident-persistence';
 
 describe('DetectIncidentUseCase integration', () => {
   it('persists Incident, Event, and Outbox in the same transaction', async () => {
@@ -20,6 +20,10 @@ describe('DetectIncidentUseCase integration', () => {
       incidents: {
         save: async (record) => {
           writes.push({ kind: 'Incident', transactionId, record });
+        },
+        findById: async () => null,
+        updateProjection: async () => {
+          throw new Error('Not expected.');
         },
       },
       events: {
@@ -79,6 +83,13 @@ describe('DetectIncidentUseCase integration', () => {
     expect(new Set(writes.map((write) => write.transactionId))).toEqual(
       new Set([transactionId]),
     );
+    expect(writes[0].record).toMatchObject({
+      currentProjectionState: {
+        status: 'DETECTED',
+        description: 'Carlos detects a leak.',
+        detectedAt: '2026-07-07T15:00:00.000Z',
+      },
+    });
     expect(writes[1].record).toMatchObject({
       id: 'event-1',
       aggregateType: 'Incident',

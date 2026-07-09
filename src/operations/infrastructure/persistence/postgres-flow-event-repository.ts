@@ -3,7 +3,7 @@ import { PoolClient } from 'pg';
 import {
   FlowEventRecord,
   FlowEventRepository,
-} from '../../application/detect-incident-use-case';
+} from '../../application/incident-persistence';
 
 export class PostgresFlowEventRepository implements FlowEventRepository {
   constructor(private readonly client: PoolClient) {}
