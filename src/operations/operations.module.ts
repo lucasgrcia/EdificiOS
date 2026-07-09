@@ -2,12 +2,18 @@ import { Module } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
 import { AssignIncidentUseCase } from './application/assign-incident-use-case';
+import {
+  CaptureEvidenceUseCase,
+  sha256HashCalculator,
+} from './application/capture-evidence-use-case';
 import { DetectIncidentUseCase } from './application/detect-incident-use-case';
 import { TransactionRunner } from './application/incident-persistence';
 import { ResolveIncidentUseCase } from './application/resolve-incident-use-case';
 import { StartIncidentUseCase } from './application/start-incident-use-case';
 import { AssignIncidentRequestPipe } from './infrastructure/http/assign-incident-request.pipe';
+import { CaptureEvidenceMultipartPipe } from './infrastructure/http/capture-evidence-multipart.pipe';
 import { DetectIncidentRequestPipe } from './infrastructure/http/detect-incident-request.pipe';
+import { EventsController } from './infrastructure/http/events.controller';
 import { IncidentsController } from './infrastructure/http/incidents.controller';
 import { LocalFileStorage } from './infrastructure/file-storage/local-file-storage';
 import { PostgresEventEvidenceRepository } from './infrastructure/persistence/postgres-event-evidence-repository';
@@ -28,10 +34,11 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
 }
 
 @Module({
-  controllers: [IncidentsController],
+  controllers: [IncidentsController, EventsController],
   providers: [
     DetectIncidentRequestPipe,
     AssignIncidentRequestPipe,
+    CaptureEvidenceMultipartPipe,
     PostgresOperationsPool,
     PostgresOperationsTransactionRunner,
     {
@@ -76,6 +83,31 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       inject: [PostgresOperationsTransactionRunner],
       useFactory: (transactionRunner: TransactionRunner) =>
         new ResolveIncidentUseCase(createUseCaseDependencies(transactionRunner)),
+    },
+    {
+      provide: CaptureEvidenceUseCase,
+      inject: [
+        LocalFileStorage,
+        PostgresEvidenceRepository,
+        PostgresEventEvidenceRepository,
+      ],
+      useFactory: (
+        fileStorage: LocalFileStorage,
+        evidenceRepository: PostgresEvidenceRepository,
+        eventEvidenceRepository: PostgresEventEvidenceRepository,
+      ) =>
+        new CaptureEvidenceUseCase({
+          fileStorage,
+          evidenceRepository,
+          eventEvidenceRepository,
+          idGenerator: {
+            generate: () => randomUUID(),
+          },
+          clock: {
+            now: () => new Date(),
+          },
+          hashCalculator: sha256HashCalculator,
+        }),
     },
   ],
 })

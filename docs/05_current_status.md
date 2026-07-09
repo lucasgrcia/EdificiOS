@@ -81,3 +81,29 @@ PR2
 ✔ StorageReference
 ✔ MimeType
 ✔ SHA256
+
+PR3
+✔ Event ↔ Evidence (tabla puente event_evidences)
+
+PR4
+✔ CaptureEvidenceUseCase
+
+PR5
+✔ HTTP Capture Evidence (POST /api/v1/operations/events/:eventId/evidence)
+
+Backlog Sprint 3 (P1 — revisión arquitectura PR4)
+
+- `storageReference` lo decide hoy el cliente del caso de uso; evolucionar a `FileStorage.generateReference()` para que la infraestructura asigne rutas y el command no reciba paths
+- Validar existencia del Domain Event antes de `associate()`; hoy cualquier UUID persiste y puede romper la semántica hecho ↔ prueba
+- El SHA-256 verifica integridad, no identidad: dos capturas idénticas son dos evidencias distintas (sin deduplicación automática por hash)
+
+Política de almacenamiento
+
+Local filesystem hasta que una historia de campo real exija otra cosa. Sin S3, Azure Blob, MinIO ni cloud storage por anticipación.
+
+Backlog heredado (Sprint 1)
+
+- Proyección derivada del dominio o del evento emitido
+- Errores HTTP tipados (404 / 409)
+- Concurrencia optimista en updateProjection
+- Definición explícita Flow vs Incident en glosario
