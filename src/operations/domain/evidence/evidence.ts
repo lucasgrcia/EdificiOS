@@ -2,12 +2,12 @@ import { ActorId } from './value-objects/actor-id';
 import { CapturedAt } from './value-objects/captured-at';
 import { EvidenceCaption } from './value-objects/evidence-caption';
 import { EvidenceId } from './value-objects/evidence-id';
-import { MediaReference } from './value-objects/media-reference';
+import { StorageReference } from './value-objects/storage-reference';
 
 export type CaptureEvidenceInput = {
   evidenceId: string;
   actorId: string;
-  mediaReference: string;
+  storageReference: string;
   caption?: string | null;
   capturedAt: Date;
   asOf?: Date;
@@ -17,7 +17,7 @@ export class Evidence {
   private constructor(
     private readonly evidenceIdentifier: EvidenceId,
     private readonly actorIdentifier: ActorId,
-    private readonly physicalProof: MediaReference,
+    private readonly storageReferenceValue: StorageReference,
     private readonly optionalCaption: EvidenceCaption | null,
     private readonly capturedAtValue: CapturedAt,
   ) {}
@@ -28,7 +28,7 @@ export class Evidence {
     return new Evidence(
       EvidenceId.create(input.evidenceId),
       ActorId.create(input.actorId),
-      MediaReference.create(input.mediaReference),
+      StorageReference.create(input.storageReference),
       input.caption === undefined || input.caption === null
         ? null
         : EvidenceCaption.create(input.caption),
@@ -44,8 +44,8 @@ export class Evidence {
     return this.actorIdentifier.toString();
   }
 
-  get mediaReference(): string {
-    return this.physicalProof.toString();
+  get storageReference(): StorageReference {
+    return this.storageReferenceValue;
   }
 
   get caption(): string | null {

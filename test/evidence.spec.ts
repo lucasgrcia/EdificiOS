@@ -2,7 +2,8 @@ import { ActorId } from '../src/operations/domain/evidence/value-objects/actor-i
 import { CapturedAt } from '../src/operations/domain/evidence/value-objects/captured-at';
 import { EvidenceCaption } from '../src/operations/domain/evidence/value-objects/evidence-caption';
 import { EvidenceId } from '../src/operations/domain/evidence/value-objects/evidence-id';
-import { MediaReference } from '../src/operations/domain/evidence/value-objects/media-reference';
+import { MimeType } from '../src/operations/domain/evidence/value-objects/mime-type';
+import { StorageReference } from '../src/operations/domain/evidence/value-objects/storage-reference';
 import { Evidence } from '../src/operations/domain/evidence/evidence';
 
 describe('Evidence value objects', () => {
@@ -30,18 +31,59 @@ describe('Evidence value objects', () => {
     });
   });
 
-  describe('MediaReference', () => {
-    it('creates a valid media reference', () => {
-      const mediaReference = MediaReference.create(
-        ' media://photos/bomba-principal.jpg ',
+  describe('StorageReference', () => {
+    it('creates a valid storage reference', () => {
+      const storageReference = StorageReference.create(
+        ' 2026/07/bomba-principal.jpg ',
       );
 
-      expect(mediaReference.toString()).toBe('media://photos/bomba-principal.jpg');
+      expect(storageReference.toString()).toBe('2026/07/bomba-principal.jpg');
     });
 
-    it('rejects an empty media reference', () => {
-      expect(() => MediaReference.create('')).toThrow(
-        'Media reference is required.',
+    it('normalizes path separators', () => {
+      const storageReference = StorageReference.create(
+        '2026\\07\\bomba-principal.jpg',
+      );
+
+      expect(storageReference.toString()).toBe('2026/07/bomba-principal.jpg');
+    });
+
+    it('rejects an empty storage reference', () => {
+      expect(() => StorageReference.create('')).toThrow(
+        'Storage reference is required.',
+      );
+    });
+
+    it('rejects an absolute storage reference', () => {
+      expect(() => StorageReference.create('/etc/passwd')).toThrow(
+        'Storage reference must be a relative path.',
+      );
+    });
+
+    it('rejects a parent traversal storage reference', () => {
+      expect(() => StorageReference.create('../secrets/key')).toThrow(
+        'Storage reference must be a relative path.',
+      );
+    });
+  });
+
+  describe('MimeType', () => {
+    it.each([
+      'image/jpeg',
+      'image/png',
+      'video/mp4',
+      'audio/mpeg',
+    ])('accepts supported mime type %s', (mimeType) => {
+      expect(MimeType.create(mimeType).toString()).toBe(mimeType);
+    });
+
+    it('normalizes mime type casing', () => {
+      expect(MimeType.create(' IMAGE/JPEG ').toString()).toBe('image/jpeg');
+    });
+
+    it('rejects unsupported mime types', () => {
+      expect(() => MimeType.create('application/pdf')).toThrow(
+        'Mime type is not supported.',
       );
     });
   });
@@ -94,14 +136,16 @@ describe('Evidence entity', () => {
     const evidence = Evidence.capture({
       evidenceId: 'evidence-1',
       actorId: 'actor-1',
-      mediaReference: 'media://photos/bomba-principal.jpg',
+      storageReference: '2026/07/bomba-principal.jpg',
       caption: 'Olor a quemado en bomba principal.',
       capturedAt,
     });
 
     expect(evidence.id).toBe('evidence-1');
     expect(evidence.actorId).toBe('actor-1');
-    expect(evidence.mediaReference).toBe('media://photos/bomba-principal.jpg');
+    expect(evidence.storageReference.toString()).toBe(
+      '2026/07/bomba-principal.jpg',
+    );
     expect(evidence.caption).toBe('Olor a quemado en bomba principal.');
     expect(evidence.capturedAt).toEqual(capturedAt);
   });
@@ -110,22 +154,22 @@ describe('Evidence entity', () => {
     const evidence = Evidence.capture({
       evidenceId: 'evidence-1',
       actorId: 'actor-1',
-      mediaReference: 'media://photos/recorrida-subsuelo.jpg',
+      storageReference: '2026/07/recorrida-subsuelo.jpg',
       capturedAt,
     });
 
     expect(evidence.caption).toBeNull();
   });
 
-  it('requires physical proof through media reference', () => {
+  it('requires physical proof through storage reference', () => {
     expect(() =>
       Evidence.capture({
         evidenceId: 'evidence-1',
         actorId: 'actor-1',
-        mediaReference: '   ',
+        storageReference: '   ',
         capturedAt,
       }),
-    ).toThrow('Media reference is required.');
+    ).toThrow('Storage reference is required.');
   });
 
   it('requires the actor who captured the evidence', () => {
@@ -133,7 +177,7 @@ describe('Evidence entity', () => {
       Evidence.capture({
         evidenceId: 'evidence-1',
         actorId: '',
-        mediaReference: 'media://photos/bomba-principal.jpg',
+        storageReference: '2026/07/bomba-principal.jpg',
         capturedAt,
       }),
     ).toThrow('Actor id is required.');
@@ -144,7 +188,7 @@ describe('Evidence entity', () => {
       Evidence.capture({
         evidenceId: 'evidence-1',
         actorId: 'actor-1',
-        mediaReference: 'media://photos/bomba-principal.jpg',
+        storageReference: '2026/07/bomba-principal.jpg',
         capturedAt: new Date('2026-07-07T11:00:00.000Z'),
         asOf: new Date('2026-07-07T10:00:00.000Z'),
       }),
@@ -156,7 +200,7 @@ describe('Evidence entity', () => {
       Evidence.capture({
         evidenceId: 'evidence-1',
         actorId: 'actor-1',
-        mediaReference: 'media://photos/bomba-principal.jpg',
+        storageReference: '2026/07/bomba-principal.jpg',
         caption: '   ',
         capturedAt,
       }),

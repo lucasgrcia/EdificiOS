@@ -9,6 +9,8 @@ import { StartIncidentUseCase } from './application/start-incident-use-case';
 import { AssignIncidentRequestPipe } from './infrastructure/http/assign-incident-request.pipe';
 import { DetectIncidentRequestPipe } from './infrastructure/http/detect-incident-request.pipe';
 import { IncidentsController } from './infrastructure/http/incidents.controller';
+import { LocalFileStorage } from './infrastructure/file-storage/local-file-storage';
+import { PostgresEvidenceRepository } from './infrastructure/persistence/postgres-evidence-repository';
 import { PostgresOperationsPool } from './infrastructure/persistence/postgres-operations-pool';
 import { PostgresOperationsTransactionRunner } from './infrastructure/persistence/postgres-operations-transaction-runner';
 
@@ -31,6 +33,19 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     AssignIncidentRequestPipe,
     PostgresOperationsPool,
     PostgresOperationsTransactionRunner,
+    {
+      provide: PostgresEvidenceRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresEvidenceRepository(operationsPool.pool),
+    },
+    {
+      provide: LocalFileStorage,
+      useFactory: () =>
+        new LocalFileStorage({
+          basePath: process.env.EVIDENCE_STORAGE_PATH ?? './storage/evidences',
+        }),
+    },
     {
       provide: DetectIncidentUseCase,
       inject: [PostgresOperationsTransactionRunner],
