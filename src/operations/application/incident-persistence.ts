@@ -8,6 +8,7 @@ export type IncidentProjectionState = {
   status: IncidentStatus;
   description: string;
   detectedAt: string;
+  assetId: string;
   assignedAt?: string;
   assignedActorId?: string;
   startedAt?: string;

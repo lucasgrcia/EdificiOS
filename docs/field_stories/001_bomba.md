@@ -2,17 +2,33 @@
 
 ## Contexto
 
-**Sitio:** Torre B
+**Site:** Torre B
 **Turno:** Mañana
 **Actor principal:** Encargado
 
 ---
 
+## Asset involucrado
+
+El Incident se detecta sobre un Asset ya registrado en el edificio:
+
+| Atributo | Valor |
+|----------|-------|
+| Nombre | Bomba principal |
+| Tipo | Bomba |
+| Ubicación | Subsuelo — Torre B |
+| Fabricante | Grundfos |
+| Modelo | CR 32-4 |
+| Número de serie | SN-12345 |
+| Criticidad | HIGH |
+
+---
+
 ## ¿Qué ocurrió realmente?
 
-Durante la recorrida de rutina del turno de la mañana, el encargado detecta olor a quemado y una pérdida de agua en la bomba principal del subsuelo.
+Durante la recorrida de rutina del turno de la mañana, el encargado detecta olor a quemado y una pérdida de agua en la **Bomba principal** del subsuelo.
 
-Sin detener su recorrida, abre la aplicación, toma una fotografía, dicta una breve descripción y envía el registro.
+Sin detener su recorrida, abre la aplicación, toma una fotografía, dicta una breve descripción y envía el registro. El sistema asocia el hecho al Asset correspondiente.
 
 La administración recibe la novedad inmediatamente y puede iniciar la coordinación con el proveedor correspondiente.
 
@@ -22,21 +38,21 @@ La administración recibe la novedad inmediatamente y puede iniciar la coordinac
 
 ### Encargado
 
-Registrar el hecho en menos de 15 segundos sin clasificar categorías ni completar formularios.
+Registrar el hecho en menos de 15 segundos sin clasificar categorías ni completar formularios. El Asset ya existe en el sistema; no debe recordar identificadores técnicos.
 
 ### Administrador
 
-Conocer rápidamente qué activo presenta la anomalía y disponer de evidencia suficiente para coordinar la reparación.
+Conocer rápidamente qué Asset presenta la anomalía — nombre, ubicación, fabricante y modelo — y disponer de Evidence suficiente para coordinar la reparación.
 
 ### Proveedor
 
-Recibir información clara sobre el activo afectado antes de llegar al edificio.
+Recibir información clara sobre el Asset afectado antes de llegar al edificio.
 
 ---
 
 ## ¿Qué hizo el sistema?
 
-Relacionó automáticamente el registro con el activo correspondiente, conservó la evidencia y notificó a la administración.
+Verificó que el Asset existía, detectó el Incident sobre ese Asset, conservó la Evidence y notificó a la administración.
 
 ---
 
@@ -46,12 +62,14 @@ La memoria del edificio no puede depender de conversaciones verbales ni de mensa
 
 El conocimiento operativo debe permanecer disponible aunque cambie el encargado del turno.
 
+Un Incident sin Asset identificado no tiene contexto operativo en el edificio.
+
 ---
 
 ## Preguntas abiertas
 
 - ¿Había cobertura de red?
-- ¿El activo tenía código QR visible?
+- ¿El Asset tenía código QR visible?
 - ¿Cuánto tiempo demoró el registro?
 - ¿Fue necesario registrar más de una fotografía?
 

@@ -1,4 +1,7 @@
+import { AssetId } from '../domain/asset/value-objects/asset-id';
+import { AssetNotFoundError } from '../domain/asset/asset-not-found';
 import { IncidentAggregate } from '../domain/incident';
+import { AssetRepository } from './asset-persistence';
 import {
   IncidentTransitionResult,
   OutboxRecord,
@@ -8,10 +11,13 @@ import { toFlowEventRecord } from './map-incident-domain-event';
 import { pullExactlyOneDomainEvent } from './pull-exactly-one-domain-event';
 
 export type DetectIncidentCommand = {
+  assetId: string;
   description: string;
 };
 
-export type DetectIncidentUseCaseDependencies = UseCaseDependencies;
+export type DetectIncidentUseCaseDependencies = UseCaseDependencies & {
+  assetRepository: AssetRepository;
+};
 
 export class DetectIncidentUseCase {
   constructor(private readonly dependencies: DetectIncidentUseCaseDependencies) {}
@@ -19,6 +25,16 @@ export class DetectIncidentUseCase {
   async execute(
     command: DetectIncidentCommand,
   ): Promise<IncidentTransitionResult> {
+    const assetRecord = await this.dependencies.assetRepository.findById(
+      command.assetId,
+    );
+
+    if (assetRecord === null) {
+      throw new AssetNotFoundError(command.assetId);
+    }
+
+    const assetId = AssetId.create(assetRecord.id);
+
     return this.dependencies.transactionRunner.run(async (transaction) => {
       const incidentId = this.dependencies.idGenerator.generate();
       const eventId = this.dependencies.idGenerator.generate();
@@ -28,6 +44,7 @@ export class DetectIncidentUseCase {
       const incident = IncidentAggregate.detect({
         incidentId,
         flowId: eventId,
+        assetId,
         description: command.description,
         detectedAt,
       });
@@ -51,6 +68,7 @@ export class DetectIncidentUseCase {
           status: 'DETECTED',
           description: incident.description,
           detectedAt: incident.detectedAt.toISOString(),
+          assetId: assetId.toString(),
         },
         createdAt: incident.detectedAt,
       });

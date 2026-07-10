@@ -1,109 +1,151 @@
-Estado actual
+# Estado actual del proyecto
 
-Sprint 0
+Última actualización: 2026-07-09
 
-Completado
+Sprint 2 finalizado.
 
-✔ IncidentAggregate
+---
 
-✔ Domain Events
+## Resumen
 
-✔ PostgreSQL
+| Indicador | Estado |
+|-----------|--------|
+| Desarrollo | Activo |
+| Arquitectura | Estable |
+| Walking Skeleton | Completo |
+| Tests | 66/66 OK |
+| Build | OK |
 
-✔ Walking Skeleton
+---
 
-✔ Outbox
+## Sprints completados
 
-✔ Endpoint HTTP
+### Sprint 0 — Walking Skeleton
 
-✔ Integration Test
+- `IncidentAggregate` con detección.
+- Domain Events, Event Log, Outbox, proyección PostgreSQL.
+- Endpoint HTTP de detección.
+- Tests de integración transaccional.
 
-Sprint 1
+### Sprint 1 — Incident Lifecycle
 
-Completado
+- Ciclo `DETECTED → ASSIGNED → IN_PROGRESS → RESOLVED`.
+- Un Domain Event por transición, persistido en transacción única.
+- Endpoints HTTP: detect, assign, start, resolve.
+- Replay del agregado desde eventos.
+- Guards: un evento por transición; `updateProjection` con `rowCount`.
 
-✔ Incident Lifecycle (DETECTED → ASSIGNED → IN_PROGRESS → RESOLVED)
+### Sprint 2 — Evidence
 
-✔ Transiciones validadas en dominio con un DomainEvent por transición
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | Dominio Evidence (VOs, entidad, tests unitarios) | ✔ |
+| PR2 | Metadata PostgreSQL + `FileStorage` local | ✔ |
+| PR3 | Asociación Event ↔ Evidence (`event_evidences`) | ✔ |
+| PR4 | `CaptureEvidenceUseCase` | ✔ |
+| PR5 | HTTP multipart capture evidence | ✔ |
 
-✔ Persistencia transaccional (incidents + events + outbox)
+---
 
-✔ Endpoints HTTP del ciclo de vida
+## Funcionalidades implementadas
 
-✔ Integration Tests (transiciones válidas e inválidas)
+### Incident
 
-✔ Replay del agregado desde Domain Events
+| Operación | Endpoint | Domain Event |
+|-----------|----------|--------------|
+| Detect | `POST /api/v1/operations/incidents` | `workflow.flow.detected` |
+| Assign | `POST /api/v1/operations/incidents/:id/assign` | `workflow.flow.assigned` |
+| Start | `POST /api/v1/operations/incidents/:id/start` | `workflow.flow.execution_started` |
+| Resolve | `POST /api/v1/operations/incidents/:id/resolve` | `workflow.flow.resolved` |
 
-Eventos validados del ciclo de vida
+### Evidence
 
-- workflow.flow.detected
-- workflow.flow.assigned
-- workflow.flow.execution_started
-- workflow.flow.resolved
+| Capacidad | Detalle |
+|-----------|---------|
+| Dominio | Entidad inmutable, VOs validados |
+| Integridad | SHA-256 del contenido |
+| Almacenamiento | Local filesystem (`EVIDENCE_STORAGE_PATH`) |
+| Metadata | Tabla `evidences` |
+| Asociación | Tabla puente `event_evidences` |
+| HTTP | `POST /api/v1/operations/events/:eventId/evidence` |
 
-Próximo Sprint
+Mime types soportados: `image/jpeg`, `image/png`, `video/mp4`, `audio/mpeg`.
 
-Sprint 2
+---
 
-Pendiente de definición.
+## Persistencia
 
-Backlog heredado de la revisión de arquitectura (P1)
+PostgreSQL directo (`pg`). Sin ORM.
 
-- Proyección derivada del dominio o del evento emitido
-- Errores HTTP tipados (404 / 409)
-- Concurrencia optimista en updateProjection
-- Definición explícita Flow vs Incident en glosario
+| Tabla | Rol |
+|-------|-----|
+| `incidents` | Proyección del agregado Incident |
+| `events` | Event Log append-only |
+| `outbox` | Mensajes pendientes de publicación |
+| `evidences` | Metadata de pruebas físicas |
+| `event_evidences` | Relación hecho ↔ evidencia |
 
-9/7/26 - 11:48 Actualizacion del projecto e historial de seguimiento--
+Migraciones en `src/operations/infrastructure/migrations/`.
 
-Sprint 0
-✔ Walking Skeleton
-✔ Event Log
-✔ Outbox
-✔ Incident Projection
-✔ Fitness Tests
+---
 
-Sprint 1
-✔ Incident Aggregate
-✔ Incident Lifecycle
-✔ Replay
-✔ Guards
-✔ Integration Tests
+## Tests
 
-Sprint 2
+```
+10 test suites — 66 tests — 0 fallos
+```
 
-PR1
-✔ Evidence Domain
+| Área | Archivos |
+|------|----------|
+| Dominio Evidence | `evidence.spec.ts` |
+| Dominio Incident | `incident-aggregate-replay.spec.ts`, `incident-p0-guards.spec.ts` |
+| Casos de uso | `detect-incident`, `incident-lifecycle`, `capture-evidence` |
+| HTTP | `capture-evidence.http.integration.spec.ts` |
+| Repositorios | `postgres-*-repository.integration.spec.ts` |
+| Transacciones | `postgres-operations-transaction-runner.integration.spec.ts` |
 
-PR2
-✔ Evidence Persistence
-✔ File Storage
-✔ StorageReference
-✔ MimeType
-✔ SHA256
+Los tests no requieren PostgreSQL en ejecución (usan mocks).
 
-PR3
-✔ Event ↔ Evidence (tabla puente event_evidences)
+---
 
-PR4
-✔ CaptureEvidenceUseCase
+## Arquitectura
 
-PR5
-✔ HTTP Capture Evidence (POST /api/v1/operations/events/:eventId/evidence)
+- Monolito modular, bounded context `operations`.
+- Clean Architecture: `domain → application → infrastructure`.
+- DDD táctico: agregados, Value Objects, Domain Events.
+- Transactional Outbox + Event Log como fuente de verdad.
+- Evidence respalda Domain Events, no Incident (ADR-006).
 
-Backlog Sprint 3 (P1 — revisión arquitectura PR4)
+Documentación de decisiones: `docs/architecture_decisions/`.
 
-- `storageReference` lo decide hoy el cliente del caso de uso; evolucionar a `FileStorage.generateReference()` para que la infraestructura asigne rutas y el command no reciba paths
-- Validar existencia del Domain Event antes de `associate()`; hoy cualquier UUID persiste y puede romper la semántica hecho ↔ prueba
-- El SHA-256 verifica integridad, no identidad: dos capturas idénticas son dos evidencias distintas (sin deduplicación automática por hash)
+---
 
-Política de almacenamiento
+## Deliberadamente ausente
 
-Local filesystem hasta que una historia de campo real exija otra cosa. Sin S3, Azure Blob, MinIO ni cloud storage por anticipación.
+- Autenticación y autorización
+- Sincronización offline
+- Concurrencia optimista
+- Event Bus distribuido (RabbitMQ, Redis)
+- Almacenamiento en nube
+- OCR / IA
 
-Backlog heredado (Sprint 1)
+---
 
-- Proyección derivada del dominio o del evento emitido
-- Errores HTTP tipados (404 / 409)
-- Concurrencia optimista en updateProjection
-- Definición explícita Flow vs Incident en glosario
+## Backlog inmediato (Sprint 3)
+
+### P1 — deuda técnica conocida
+
+- `storageReference`: hoy lo genera la capa HTTP; evolucionar a `FileStorage.generateReference()` para que infraestructura asigne rutas.
+- Validar existencia del Domain Event antes de `associate()`.
+- Errores HTTP tipados (404 / 409) para reglas de negocio.
+- Concurrencia optimista en `updateProjection`.
+- Proyección derivada del dominio o del evento emitido.
+- Definir explícitamente Flow vs Incident en glosario.
+
+### Política de almacenamiento
+
+Local filesystem hasta que una Field Story real exija otra cosa.
+
+### Regla de identidad
+
+El SHA-256 verifica integridad, no identidad. Dos capturas idénticas son dos evidencias distintas. Sin deduplicación automática por hash.

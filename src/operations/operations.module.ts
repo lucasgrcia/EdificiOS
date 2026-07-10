@@ -7,15 +7,22 @@ import {
   sha256HashCalculator,
 } from './application/capture-evidence-use-case';
 import { DetectIncidentUseCase } from './application/detect-incident-use-case';
+import { GetAssetByIdUseCase } from './application/get-asset-by-id-use-case';
 import { TransactionRunner } from './application/incident-persistence';
+import { ListAssetsBySiteUseCase } from './application/list-assets-by-site-use-case';
+import { RegisterAssetUseCase } from './application/register-asset-use-case';
 import { ResolveIncidentUseCase } from './application/resolve-incident-use-case';
 import { StartIncidentUseCase } from './application/start-incident-use-case';
 import { AssignIncidentRequestPipe } from './infrastructure/http/assign-incident-request.pipe';
+import { AssetsController } from './infrastructure/http/assets.controller';
 import { CaptureEvidenceMultipartPipe } from './infrastructure/http/capture-evidence-multipart.pipe';
 import { DetectIncidentRequestPipe } from './infrastructure/http/detect-incident-request.pipe';
 import { EventsController } from './infrastructure/http/events.controller';
 import { IncidentsController } from './infrastructure/http/incidents.controller';
+import { RegisterAssetRequestPipe } from './infrastructure/http/register-asset-request.pipe';
+import { SitesController } from './infrastructure/http/sites.controller';
 import { LocalFileStorage } from './infrastructure/file-storage/local-file-storage';
+import { PostgresAssetRepository } from './infrastructure/persistence/postgres-asset-repository';
 import { PostgresEventEvidenceRepository } from './infrastructure/persistence/postgres-event-evidence-repository';
 import { PostgresEvidenceRepository } from './infrastructure/persistence/postgres-evidence-repository';
 import { PostgresOperationsPool } from './infrastructure/persistence/postgres-operations-pool';
@@ -34,11 +41,17 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
 }
 
 @Module({
-  controllers: [IncidentsController, EventsController],
+  controllers: [
+    IncidentsController,
+    EventsController,
+    AssetsController,
+    SitesController,
+  ],
   providers: [
     DetectIncidentRequestPipe,
     AssignIncidentRequestPipe,
     CaptureEvidenceMultipartPipe,
+    RegisterAssetRequestPipe,
     PostgresOperationsPool,
     PostgresOperationsTransactionRunner,
     {
@@ -46,6 +59,12 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       inject: [PostgresOperationsPool],
       useFactory: (operationsPool: PostgresOperationsPool) =>
         new PostgresEvidenceRepository(operationsPool.pool),
+    },
+    {
+      provide: PostgresAssetRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresAssetRepository(operationsPool.pool),
     },
     {
       provide: PostgresEventEvidenceRepository,
@@ -62,9 +81,15 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     },
     {
       provide: DetectIncidentUseCase,
-      inject: [PostgresOperationsTransactionRunner],
-      useFactory: (transactionRunner: TransactionRunner) =>
-        new DetectIncidentUseCase(createUseCaseDependencies(transactionRunner)),
+      inject: [PostgresOperationsTransactionRunner, PostgresAssetRepository],
+      useFactory: (
+        transactionRunner: TransactionRunner,
+        assetRepository: PostgresAssetRepository,
+      ) =>
+        new DetectIncidentUseCase({
+          ...createUseCaseDependencies(transactionRunner),
+          assetRepository,
+        }),
     },
     {
       provide: AssignIncidentUseCase,
@@ -107,6 +132,33 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
             now: () => new Date(),
           },
           hashCalculator: sha256HashCalculator,
+        }),
+    },
+    {
+      provide: RegisterAssetUseCase,
+      inject: [PostgresAssetRepository],
+      useFactory: (assetRepository: PostgresAssetRepository) =>
+        new RegisterAssetUseCase({
+          assetRepository,
+          idGenerator: {
+            generate: () => randomUUID(),
+          },
+        }),
+    },
+    {
+      provide: GetAssetByIdUseCase,
+      inject: [PostgresAssetRepository],
+      useFactory: (assetRepository: PostgresAssetRepository) =>
+        new GetAssetByIdUseCase({
+          assetRepository,
+        }),
+    },
+    {
+      provide: ListAssetsBySiteUseCase,
+      inject: [PostgresAssetRepository],
+      useFactory: (assetRepository: PostgresAssetRepository) =>
+        new ListAssetsBySiteUseCase({
+          assetRepository,
         }),
     },
   ],

@@ -4,11 +4,11 @@ Before changing any code, inspect:
 
 docs/00_project_brief.md
 
-docs/04_glossary.md
+docs/03_glossary.md
 
-docs/05_rules.md
+docs/06_rules.md
 
-docs/06_current_status.md
+docs/05_current_status.md
 
 Never introduce new architecture.
 

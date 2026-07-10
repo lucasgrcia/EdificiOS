@@ -1,4 +1,5 @@
 import { IncidentAggregate } from '../src/operations/domain/incident';
+import { AssetId } from '../src/operations/domain/asset/value-objects/asset-id';
 import { pullExactlyOneDomainEvent } from '../src/operations/application/pull-exactly-one-domain-event';
 import { PostgresIncidentRepository } from '../src/operations/infrastructure/persistence/postgres-incident-repository';
 
@@ -7,6 +8,7 @@ describe('pullExactlyOneDomainEvent', () => {
     const incident = IncidentAggregate.detect({
       incidentId: 'incident-1',
       flowId: 'event-1',
+      assetId: AssetId.create('asset-1'),
       description: 'Carlos detects a leak.',
       detectedAt: new Date('2026-07-07T15:00:00.000Z'),
     });
@@ -20,6 +22,7 @@ describe('pullExactlyOneDomainEvent', () => {
   it('fails when no domain events were emitted', () => {
     const incident = IncidentAggregate.rehydrate({
       incidentId: 'incident-1',
+      assetId: AssetId.create('asset-1'),
       description: 'Carlos detects a leak.',
       detectedAt: new Date('2026-07-07T15:00:00.000Z'),
       status: 'DETECTED',
@@ -34,6 +37,7 @@ describe('pullExactlyOneDomainEvent', () => {
     const incident = IncidentAggregate.detect({
       incidentId: 'incident-1',
       flowId: 'event-1',
+      assetId: AssetId.create('asset-1'),
       description: 'Carlos detects a leak.',
       detectedAt: new Date('2026-07-07T15:00:00.000Z'),
     });
@@ -65,6 +69,7 @@ describe('PostgresIncidentRepository updateProjection', () => {
           status: 'ASSIGNED',
           description: 'Carlos detects a leak.',
           detectedAt: '2026-07-07T15:00:00.000Z',
+          assetId: 'asset-1',
         },
         createdAt: new Date('2026-07-07T15:00:00.000Z'),
       }),

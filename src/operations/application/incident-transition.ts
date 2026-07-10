@@ -1,3 +1,4 @@
+import { AssetId } from '../domain/asset/value-objects/asset-id';
 import { IncidentAggregate } from '../domain/incident';
 import {
   IncidentRecord,
@@ -10,6 +11,7 @@ import { pullExactlyOneDomainEvent } from './pull-exactly-one-domain-event';
 export function rehydrateIncident(record: IncidentRecord): IncidentAggregate {
   return IncidentAggregate.rehydrate({
     incidentId: record.id,
+    assetId: AssetId.create(record.currentProjectionState.assetId),
     description: record.description,
     detectedAt: new Date(record.currentProjectionState.detectedAt),
     status: record.currentProjectionState.status,

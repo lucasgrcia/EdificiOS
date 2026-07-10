@@ -1,3 +1,4 @@
+import { AssetId } from './asset/value-objects/asset-id';
 import { IncidentAssigned } from './incident-assigned';
 import { IncidentDetected } from './incident-detected';
 import { IncidentInProgress } from './incident-in-progress';
@@ -18,12 +19,14 @@ export type IncidentDomainEvent =
 export type IncidentInput = {
   incidentId: string;
   flowId: string;
+  assetId: AssetId;
   description: string;
   detectedAt: Date;
 };
 
 export type IncidentRehydrateInput = {
   incidentId: string;
+  assetId: AssetId;
   description: string;
   detectedAt: Date;
   status: IncidentStatus;
@@ -53,6 +56,7 @@ export class IncidentAggregate {
     private readonly incidentDescription: string,
     private readonly incidentDetectedAt: Date,
     private status: IncidentStatus,
+    private readonly incidentAssetId: AssetId | null,
   ) {}
 
   static detect(input: IncidentInput): IncidentAggregate {
@@ -73,6 +77,7 @@ export class IncidentAggregate {
       input.description,
       new Date(input.detectedAt),
       'DETECTED',
+      input.assetId,
     );
 
     incident.recordFlowDetected(input.flowId);
@@ -94,6 +99,7 @@ export class IncidentAggregate {
       input.description,
       new Date(input.detectedAt),
       input.status,
+      input.assetId,
     );
   }
 
@@ -113,6 +119,7 @@ export class IncidentAggregate {
       first.description,
       new Date(first.detectedAt),
       'DETECTED',
+      null,
     );
 
     for (const event of remainingEvents) {
@@ -136,6 +143,10 @@ export class IncidentAggregate {
 
   get currentStatus(): IncidentStatus {
     return this.status;
+  }
+
+  get assetId(): string | null {
+    return this.incidentAssetId?.toString() ?? null;
   }
 
   assign(input: AssignIncidentInput): void {

@@ -3,6 +3,7 @@ import {
   Controller,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   Post,
 } from '@nestjs/common';
@@ -12,6 +13,7 @@ import { DetectIncidentUseCase } from '../../application/detect-incident-use-cas
 import { IncidentTransitionResult } from '../../application/incident-persistence';
 import { ResolveIncidentUseCase } from '../../application/resolve-incident-use-case';
 import { StartIncidentUseCase } from '../../application/start-incident-use-case';
+import { AssetNotFoundError } from '../../domain/asset/asset-not-found';
 import { AssignIncidentRequestDto } from './assign-incident.dto';
 import { AssignIncidentRequestPipe } from './assign-incident-request.pipe';
 import { DetectIncidentRequestDto } from './detect-incident.dto';
@@ -28,12 +30,21 @@ export class IncidentsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  detect(
+  async detect(
     @Body(DetectIncidentRequestPipe) body: DetectIncidentRequestDto,
   ): Promise<IncidentTransitionResult> {
-    return this.detectIncidentUseCase.execute({
-      description: body.description,
-    });
+    try {
+      return await this.detectIncidentUseCase.execute({
+        assetId: body.assetId,
+        description: body.description,
+      });
+    } catch (error) {
+      if (error instanceof AssetNotFoundError) {
+        throw new NotFoundException(error.message);
+      }
+
+      throw error;
+    }
   }
 
   @Post(':id/assign')

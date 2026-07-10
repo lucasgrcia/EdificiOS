@@ -6,7 +6,13 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "build": "nest build",
-    "test": "jest"
+    "test": "jest",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "db:wait": "node scripts/wait-for-postgres.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:setup": "npm run db:up && npm run db:wait && npm run db:migrate"
   },
   "dependencies": {
     "@fastify/multipart": "^7.7.3",

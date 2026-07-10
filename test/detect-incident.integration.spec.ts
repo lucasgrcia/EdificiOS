@@ -1,4 +1,6 @@
+import { AssetNotFoundError } from '../src/operations/domain/asset/asset-not-found';
 import { DetectIncidentUseCase } from '../src/operations/application/detect-incident-use-case';
+import { AssetRecord } from '../src/operations/application/asset-persistence';
 import {
   FlowEventRecord,
   IncidentRecord,
@@ -8,7 +10,20 @@ import {
 } from '../src/operations/application/incident-persistence';
 
 describe('DetectIncidentUseCase integration', () => {
-  it('persists Incident, Event, and Outbox in the same transaction', async () => {
+  const assetId = '00000000-0000-0000-0000-000000000001';
+  const assetRecord: AssetRecord = {
+    id: assetId,
+    siteId: '00000000-0000-0000-0000-000000000010',
+    name: 'Bomba principal',
+    type: 'Bomba',
+    manufacturer: 'Grundfos',
+    model: 'CR 32-4',
+    serialNumber: 'SN-12345',
+    location: 'Subsuelo',
+    criticality: 'HIGH',
+  };
+
+  function createHarness(options?: { assetExists?: boolean }) {
     const writes: Array<{
       kind: 'Incident' | 'Event' | 'Outbox';
       transactionId: string;
@@ -63,13 +78,28 @@ describe('DetectIncidentUseCase integration', () => {
       clock: {
         now: () => new Date('2026-07-07T15:00:00.000Z'),
       },
+      assetRepository: {
+        findById: async (id) =>
+          options?.assetExists === false || id !== assetId ? null : assetRecord,
+        findBySite: async () => [],
+        save: async () => {
+          throw new Error('Not expected.');
+        },
+      },
     });
 
+    return { useCase, writes, getOpenedTransactions: () => openedTransactions };
+  }
+
+  it('persists Incident, Event, and Outbox when asset exists', async () => {
+    const { useCase, writes, getOpenedTransactions } = createHarness();
+
     const result = await useCase.execute({
+      assetId,
       description: 'Carlos detects a leak.',
     });
 
-    expect(openedTransactions).toBe(1);
+    expect(getOpenedTransactions()).toBe(1);
     expect(result).toEqual({
       incidentId: 'incident-1',
       eventId: 'event-1',
@@ -81,13 +111,14 @@ describe('DetectIncidentUseCase integration', () => {
       'Outbox',
     ]);
     expect(new Set(writes.map((write) => write.transactionId))).toEqual(
-      new Set([transactionId]),
+      new Set(['tx-1']),
     );
     expect(writes[0].record).toMatchObject({
       currentProjectionState: {
         status: 'DETECTED',
         description: 'Carlos detects a leak.',
         detectedAt: '2026-07-07T15:00:00.000Z',
+        assetId,
       },
     });
     expect(writes[1].record).toMatchObject({
@@ -107,6 +138,39 @@ describe('DetectIncidentUseCase integration', () => {
       aggregateId: 'incident-1',
       eventId: 'event-1',
       status: 'pending',
+    });
+  });
+
+  it('does not create an incident when asset does not exist', async () => {
+    const { useCase, writes, getOpenedTransactions } = createHarness({
+      assetExists: false,
+    });
+
+    await expect(
+      useCase.execute({
+        assetId: '00000000-0000-0000-0000-000000000099',
+        description: 'Carlos detects a leak.',
+      }),
+    ).rejects.toBeInstanceOf(AssetNotFoundError);
+
+    expect(getOpenedTransactions()).toBe(0);
+    expect(writes).toEqual([]);
+  });
+
+  it('keeps the normal detect flow working with a persisted asset reference', async () => {
+    const { useCase, writes } = createHarness();
+
+    const result = await useCase.execute({
+      assetId,
+      description: 'Ascensor detenido entre pisos.',
+    });
+
+    expect(result.incidentId).toBe('incident-1');
+    expect(writes[0].record).toMatchObject({
+      currentProjectionState: {
+        assetId,
+        description: 'Ascensor detenido entre pisos.',
+      },
     });
   });
 });

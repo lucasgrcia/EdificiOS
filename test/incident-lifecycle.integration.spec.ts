@@ -1,4 +1,5 @@
 import { AssignIncidentUseCase } from '../src/operations/application/assign-incident-use-case';
+import { AssetRecord } from '../src/operations/application/asset-persistence';
 import { DetectIncidentUseCase } from '../src/operations/application/detect-incident-use-case';
 import {
   FlowEventRecord,
@@ -14,6 +15,19 @@ type WriteEntry = {
   kind: 'Incident' | 'Projection' | 'Event' | 'Outbox';
   transactionId: string;
   record: IncidentRecord | FlowEventRecord | OutboxRecord;
+};
+
+const ASSET_ID = 'asset-1';
+const assetRecord: AssetRecord = {
+  id: ASSET_ID,
+  siteId: 'site-1',
+  name: 'Bomba principal',
+  type: 'Bomba',
+  manufacturer: null,
+  model: null,
+  serialNumber: null,
+  location: 'Subsuelo',
+  criticality: 'HIGH',
 };
 
 function createInMemoryTransaction(
@@ -103,6 +117,13 @@ function createTestHarness() {
         return new Date(timestamp);
       },
     },
+    assetRepository: {
+      findById: async (id: string) => (id === ASSET_ID ? assetRecord : null),
+      findBySite: async () => [],
+      save: async () => {
+        throw new Error('Not expected.');
+      },
+    },
   };
 
   return {
@@ -136,6 +157,7 @@ describe('Incident lifecycle integration', () => {
     const resolveUseCase = new ResolveIncidentUseCase(harness.dependencies);
 
     const detected = await detectUseCase.execute({
+      assetId: ASSET_ID,
       description: 'Carlos detects a leak.',
     });
     const assigned = await assignUseCase.execute({
@@ -185,6 +207,7 @@ describe('Incident lifecycle integration', () => {
       status: 'RESOLVED',
       description: 'Carlos detects a leak.',
       detectedAt: '2026-07-07T15:00:00.000Z',
+      assetId: ASSET_ID,
       assignedAt: '2026-07-07T15:10:00.000Z',
       assignedActorId: 'actor-1',
       startedAt: '2026-07-07T15:20:00.000Z',
@@ -207,7 +230,10 @@ describe('Incident lifecycle integration', () => {
     const harness = createTestHarness();
     harness.pushIds('incident-1', 'event-detected', 'outbox-detected');
     const detectUseCase = new DetectIncidentUseCase(harness.dependencies);
-    await detectUseCase.execute({ description: 'Carlos detects a leak.' });
+    await detectUseCase.execute({
+      assetId: ASSET_ID,
+      description: 'Carlos detects a leak.',
+    });
 
     harness.pushIds('event-assigned', 'outbox-assigned');
     const assignUseCase = new AssignIncidentUseCase(harness.dependencies);
@@ -250,7 +276,10 @@ describe('Incident lifecycle integration', () => {
     );
     const detectUseCase = new DetectIncidentUseCase(harness.dependencies);
     const assignUseCase = new AssignIncidentUseCase(harness.dependencies);
-    await detectUseCase.execute({ description: 'Carlos detects a leak.' });
+    await detectUseCase.execute({
+      assetId: ASSET_ID,
+      description: 'Carlos detects a leak.',
+    });
     await assignUseCase.execute({
       incidentId: 'incident-1',
       actorId: 'actor-1',
@@ -292,7 +321,10 @@ describe('Incident lifecycle integration', () => {
     const detectUseCase = new DetectIncidentUseCase(harness.dependencies);
     const assignUseCase = new AssignIncidentUseCase(harness.dependencies);
     const startUseCase = new StartIncidentUseCase(harness.dependencies);
-    await detectUseCase.execute({ description: 'Carlos detects a leak.' });
+    await detectUseCase.execute({
+      assetId: ASSET_ID,
+      description: 'Carlos detects a leak.',
+    });
     await assignUseCase.execute({
       incidentId: 'incident-1',
       actorId: 'actor-1',
@@ -349,7 +381,10 @@ describe('Incident lifecycle invalid transitions', () => {
     );
     const detectUseCase = new DetectIncidentUseCase(harness.dependencies);
     const assignUseCase = new AssignIncidentUseCase(harness.dependencies);
-    await detectUseCase.execute({ description: 'Carlos detects a leak.' });
+    await detectUseCase.execute({
+      assetId: ASSET_ID,
+      description: 'Carlos detects a leak.',
+    });
     await assignUseCase.execute({
       incidentId: 'incident-1',
       actorId: 'actor-1',
@@ -383,7 +418,10 @@ describe('Incident lifecycle invalid transitions', () => {
     const detectUseCase = new DetectIncidentUseCase(harness.dependencies);
     const assignUseCase = new AssignIncidentUseCase(harness.dependencies);
     const startUseCase = new StartIncidentUseCase(harness.dependencies);
-    await detectUseCase.execute({ description: 'Carlos detects a leak.' });
+    await detectUseCase.execute({
+      assetId: ASSET_ID,
+      description: 'Carlos detects a leak.',
+    });
     await assignUseCase.execute({
       incidentId: 'incident-1',
       actorId: 'actor-1',
@@ -417,7 +455,10 @@ describe('Incident lifecycle invalid transitions', () => {
     const assignUseCase = new AssignIncidentUseCase(harness.dependencies);
     const startUseCase = new StartIncidentUseCase(harness.dependencies);
     const resolveUseCase = new ResolveIncidentUseCase(harness.dependencies);
-    await detectUseCase.execute({ description: 'Carlos detects a leak.' });
+    await detectUseCase.execute({
+      assetId: ASSET_ID,
+      description: 'Carlos detects a leak.',
+    });
     await assignUseCase.execute({
       incidentId: 'incident-1',
       actorId: 'actor-1',
@@ -450,7 +491,10 @@ describe('Incident lifecycle invalid transitions', () => {
     harness.pushIds('incident-1', 'event-detected', 'outbox-detected');
     const detectUseCase = new DetectIncidentUseCase(harness.dependencies);
     const startUseCase = new StartIncidentUseCase(harness.dependencies);
-    await detectUseCase.execute({ description: 'Carlos detects a leak.' });
+    await detectUseCase.execute({
+      assetId: ASSET_ID,
+      description: 'Carlos detects a leak.',
+    });
 
     harness.pushIds('event-started', 'outbox-started');
 
@@ -473,7 +517,10 @@ describe('Incident lifecycle invalid transitions', () => {
     const detectUseCase = new DetectIncidentUseCase(harness.dependencies);
     const assignUseCase = new AssignIncidentUseCase(harness.dependencies);
     const startUseCase = new StartIncidentUseCase(harness.dependencies);
-    await detectUseCase.execute({ description: 'Carlos detects a leak.' });
+    await detectUseCase.execute({
+      assetId: ASSET_ID,
+      description: 'Carlos detects a leak.',
+    });
     await assignUseCase.execute({
       incidentId: 'incident-1',
       actorId: 'actor-1',
@@ -504,7 +551,10 @@ describe('Incident lifecycle invalid transitions', () => {
     const assignUseCase = new AssignIncidentUseCase(harness.dependencies);
     const startUseCase = new StartIncidentUseCase(harness.dependencies);
     const resolveUseCase = new ResolveIncidentUseCase(harness.dependencies);
-    await detectUseCase.execute({ description: 'Carlos detects a leak.' });
+    await detectUseCase.execute({
+      assetId: ASSET_ID,
+      description: 'Carlos detects a leak.',
+    });
     await assignUseCase.execute({
       incidentId: 'incident-1',
       actorId: 'actor-1',
@@ -534,7 +584,10 @@ describe('Incident lifecycle invalid transitions', () => {
     harness.pushIds('incident-1', 'event-detected', 'outbox-detected');
     const detectUseCase = new DetectIncidentUseCase(harness.dependencies);
     const resolveUseCase = new ResolveIncidentUseCase(harness.dependencies);
-    await detectUseCase.execute({ description: 'Carlos detects a leak.' });
+    await detectUseCase.execute({
+      assetId: ASSET_ID,
+      description: 'Carlos detects a leak.',
+    });
 
     harness.pushIds('event-resolved', 'outbox-resolved');
 
@@ -555,7 +608,10 @@ describe('Incident lifecycle invalid transitions', () => {
     const detectUseCase = new DetectIncidentUseCase(harness.dependencies);
     const assignUseCase = new AssignIncidentUseCase(harness.dependencies);
     const resolveUseCase = new ResolveIncidentUseCase(harness.dependencies);
-    await detectUseCase.execute({ description: 'Carlos detects a leak.' });
+    await detectUseCase.execute({
+      assetId: ASSET_ID,
+      description: 'Carlos detects a leak.',
+    });
     await assignUseCase.execute({
       incidentId: 'incident-1',
       actorId: 'actor-1',
@@ -585,7 +641,10 @@ describe('Incident lifecycle invalid transitions', () => {
     const assignUseCase = new AssignIncidentUseCase(harness.dependencies);
     const startUseCase = new StartIncidentUseCase(harness.dependencies);
     const resolveUseCase = new ResolveIncidentUseCase(harness.dependencies);
-    await detectUseCase.execute({ description: 'Carlos detects a leak.' });
+    await detectUseCase.execute({
+      assetId: ASSET_ID,
+      description: 'Carlos detects a leak.',
+    });
     await assignUseCase.execute({
       incidentId: 'incident-1',
       actorId: 'actor-1',

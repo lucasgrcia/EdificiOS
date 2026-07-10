@@ -31,6 +31,7 @@ describe('PostgresOperationsTransactionRunner integration', () => {
             status: 'DETECTED',
             description: 'Carlos detects a leak.',
             detectedAt: '2026-07-07T15:00:00.000Z',
+            assetId: '00000000-0000-0000-0000-000000000099',
           },
           createdAt: new Date('2026-07-07T15:00:00.000Z'),
         });
