@@ -2,7 +2,6 @@ import { ShiftAggregate } from '../src/operations/domain/shift/shift';
 import { ShiftContinuityClosed } from '../src/operations/domain/shift/shift-continuity-closed';
 import { ShiftContinuityStarted } from '../src/operations/domain/shift/shift-continuity-started';
 import { EndedAt } from '../src/operations/domain/shift/value-objects/ended-at';
-import { OperatorId } from '../src/operations/domain/shift/value-objects/operator-id';
 import { ShiftId } from '../src/operations/domain/shift/value-objects/shift-id';
 import { ShiftStatus } from '../src/operations/domain/shift/value-objects/shift-status';
 import { ShiftType } from '../src/operations/domain/shift/value-objects/shift-type';
@@ -27,16 +26,6 @@ describe('Shift value objects', () => {
 
     it('rejects an empty site id', () => {
       expect(() => SiteId.create('')).toThrow('Site id is required.');
-    });
-  });
-
-  describe('OperatorId', () => {
-    it('creates a valid operator id', () => {
-      expect(OperatorId.create(' operator-1 ').toString()).toBe('operator-1');
-    });
-
-    it('rejects an empty operator id', () => {
-      expect(() => OperatorId.create('   ')).toThrow('Operator id is required.');
     });
   });
 
@@ -106,11 +95,12 @@ describe('Shift value objects', () => {
 describe('ShiftAggregate', () => {
   const startedAt = new Date('2026-07-10T08:00:00.000Z');
   const endedAt = new Date('2026-07-10T16:00:00.000Z');
+  const actorId = '00000000-0000-0000-0000-000000000020';
   const validInput = {
     shiftId: 'shift-1',
     flowId: 'flow-started-1',
     siteId: 'site-1',
-    operatorId: 'operator-1',
+    actorId,
     shiftType: 'Mañana',
     startedAt,
   };
@@ -120,7 +110,7 @@ describe('ShiftAggregate', () => {
 
     expect(shift.id).toBe('shift-1');
     expect(shift.siteId).toBe('site-1');
-    expect(shift.operatorId).toBe('operator-1');
+    expect(shift.actorId).toBe(actorId);
     expect(shift.shiftType).toBe('Mañana');
     expect(shift.startedAt).toEqual(startedAt);
     expect(shift.endedAt).toBeNull();
@@ -138,7 +128,7 @@ describe('ShiftAggregate', () => {
       id: 'flow-started-1',
       shiftId: 'shift-1',
       siteId: 'site-1',
-      operatorId: 'operator-1',
+      actorId,
       shiftType: 'Mañana',
       startedAt,
     });
@@ -196,7 +186,7 @@ describe('ShiftAggregate', () => {
     const rehydrated = ShiftAggregate.rehydrate({
       shiftId: started.id,
       siteId: started.siteId,
-      operatorId: started.operatorId,
+      actorId: started.actorId,
       shiftType: started.shiftType,
       status: 'OPEN',
       startedAt: started.startedAt,
@@ -207,7 +197,7 @@ describe('ShiftAggregate', () => {
     expect(rehydrated.endedAt).toBeNull();
     expect(rehydrated.id).toBe(started.id);
     expect(rehydrated.siteId).toBe(started.siteId);
-    expect(rehydrated.operatorId).toBe(started.operatorId);
+    expect(rehydrated.actorId).toBe(started.actorId);
     expect(rehydrated.shiftType).toBe(started.shiftType);
     expect(rehydrated.startedAt).toEqual(started.startedAt);
   });
@@ -219,7 +209,7 @@ describe('ShiftAggregate', () => {
     const rehydrated = ShiftAggregate.rehydrate({
       shiftId: started.id,
       siteId: started.siteId,
-      operatorId: started.operatorId,
+      actorId: started.actorId,
       shiftType: started.shiftType,
       status: 'CLOSED',
       startedAt: started.startedAt,
@@ -277,13 +267,13 @@ describe('ShiftAggregate', () => {
     ).toThrow('Site id is required.');
   });
 
-  it('rejects start without operator id', () => {
+  it('rejects start without actor id', () => {
     expect(() =>
       ShiftAggregate.start({
         ...validInput,
-        operatorId: '',
+        actorId: '',
       }),
-    ).toThrow('Operator id is required.');
+    ).toThrow('Actor id is required.');
   });
 
   it('rejects start without shift type', () => {
@@ -337,6 +327,7 @@ describe('ShiftAggregate', () => {
 describe('ShiftAggregate replay', () => {
   const startedAt = new Date('2026-07-10T08:00:00.000Z');
   const endedAt = new Date('2026-07-10T16:00:00.000Z');
+  const actorId = '00000000-0000-0000-0000-000000000020';
 
   it('reconstructs OPEN status from a single started event', () => {
     const events = [
@@ -344,7 +335,7 @@ describe('ShiftAggregate replay', () => {
         'flow-started-1',
         'shift-1',
         'site-1',
-        'operator-1',
+        actorId,
         'Mañana',
         startedAt,
       ),
@@ -354,7 +345,7 @@ describe('ShiftAggregate replay', () => {
 
     expect(shift.id).toBe('shift-1');
     expect(shift.siteId).toBe('site-1');
-    expect(shift.operatorId).toBe('operator-1');
+    expect(shift.actorId).toBe(actorId);
     expect(shift.shiftType).toBe('Mañana');
     expect(shift.startedAt).toEqual(startedAt);
     expect(shift.endedAt).toBeNull();
@@ -368,7 +359,7 @@ describe('ShiftAggregate replay', () => {
         'flow-started-1',
         'shift-1',
         'site-1',
-        'operator-1',
+        actorId,
         'Tarde',
         startedAt,
       ),
@@ -402,7 +393,7 @@ describe('ShiftAggregate replay', () => {
         'flow-started-1',
         'shift-1',
         'site-1',
-        'operator-1',
+        actorId,
         'Noche',
         startedAt,
       ),

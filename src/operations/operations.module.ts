@@ -7,9 +7,12 @@ import {
   sha256HashCalculator,
 } from './application/capture-evidence-use-case';
 import { DetectIncidentUseCase } from './application/detect-incident-use-case';
+import { GetActorByIdUseCase } from './application/get-actor-by-id-use-case';
+import { ListActorsBySiteUseCase } from './application/list-actors-by-site-use-case';
 import { GetAssetByIdUseCase } from './application/get-asset-by-id-use-case';
 import { TransactionRunner } from './application/incident-persistence';
 import { ListAssetsBySiteUseCase } from './application/list-assets-by-site-use-case';
+import { RegisterActorUseCase } from './application/register-actor-use-case';
 import { RegisterAssetUseCase } from './application/register-asset-use-case';
 import { ResolveIncidentUseCase } from './application/resolve-incident-use-case';
 import { CloseShiftUseCase } from './application/close-shift-use-case';
@@ -20,17 +23,20 @@ import { RegisterSiteUseCase } from './application/register-site-use-case';
 import { StartShiftUseCase } from './application/start-shift-use-case';
 import { StartIncidentUseCase } from './application/start-incident-use-case';
 import { AssignIncidentRequestPipe } from './infrastructure/http/assign-incident-request.pipe';
+import { ActorsController } from './infrastructure/http/actors.controller';
 import { AssetsController } from './infrastructure/http/assets.controller';
 import { CaptureEvidenceMultipartPipe } from './infrastructure/http/capture-evidence-multipart.pipe';
 import { DetectIncidentRequestPipe } from './infrastructure/http/detect-incident-request.pipe';
 import { EventsController } from './infrastructure/http/events.controller';
 import { IncidentsController } from './infrastructure/http/incidents.controller';
+import { RegisterActorRequestPipe } from './infrastructure/http/register-actor-request.pipe';
 import { RegisterAssetRequestPipe } from './infrastructure/http/register-asset-request.pipe';
 import { RegisterSiteRequestPipe } from './infrastructure/http/register-site-request.pipe';
 import { ShiftsController } from './infrastructure/http/shifts.controller';
 import { SitesController } from './infrastructure/http/sites.controller';
 import { StartShiftRequestPipe } from './infrastructure/http/start-shift-request.pipe';
 import { LocalFileStorage } from './infrastructure/file-storage/local-file-storage';
+import { PostgresActorRepository } from './infrastructure/persistence/postgres-actor-repository';
 import { PostgresAssetRepository } from './infrastructure/persistence/postgres-asset-repository';
 import { PostgresEventEvidenceRepository } from './infrastructure/persistence/postgres-event-evidence-repository';
 import { PostgresEvidenceRepository } from './infrastructure/persistence/postgres-evidence-repository';
@@ -55,6 +61,7 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
   controllers: [
     IncidentsController,
     EventsController,
+    ActorsController,
     AssetsController,
     SitesController,
     ShiftsController,
@@ -64,6 +71,7 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     AssignIncidentRequestPipe,
     CaptureEvidenceMultipartPipe,
     RegisterAssetRequestPipe,
+    RegisterActorRequestPipe,
     RegisterSiteRequestPipe,
     StartShiftRequestPipe,
     PostgresOperationsPool,
@@ -91,6 +99,12 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       inject: [PostgresOperationsPool],
       useFactory: (operationsPool: PostgresOperationsPool) =>
         new PostgresSiteRepository(operationsPool.pool),
+    },
+    {
+      provide: PostgresActorRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresActorRepository(operationsPool.pool),
     },
     {
       provide: PostgresEventEvidenceRepository,
@@ -199,10 +213,14 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     },
     {
       provide: StartShiftUseCase,
-      inject: [PostgresShiftRepository],
-      useFactory: (shiftRepository: PostgresShiftRepository) =>
+      inject: [PostgresShiftRepository, PostgresActorRepository],
+      useFactory: (
+        shiftRepository: PostgresShiftRepository,
+        actorRepository: PostgresActorRepository,
+      ) =>
         new StartShiftUseCase({
           shiftRepository,
+          actorRepository,
           idGenerator: {
             generate: () => randomUUID(),
           },
@@ -258,6 +276,33 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       useFactory: (siteRepository: PostgresSiteRepository) =>
         new ListSitesUseCase({
           siteRepository,
+        }),
+    },
+    {
+      provide: RegisterActorUseCase,
+      inject: [PostgresActorRepository],
+      useFactory: (actorRepository: PostgresActorRepository) =>
+        new RegisterActorUseCase({
+          actorRepository,
+          idGenerator: {
+            generate: () => randomUUID(),
+          },
+        }),
+    },
+    {
+      provide: GetActorByIdUseCase,
+      inject: [PostgresActorRepository],
+      useFactory: (actorRepository: PostgresActorRepository) =>
+        new GetActorByIdUseCase({
+          actorRepository,
+        }),
+    },
+    {
+      provide: ListActorsBySiteUseCase,
+      inject: [PostgresActorRepository],
+      useFactory: (actorRepository: PostgresActorRepository) =>
+        new ListActorsBySiteUseCase({
+          actorRepository,
         }),
     },
   ],

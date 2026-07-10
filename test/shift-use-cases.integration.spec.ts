@@ -1,6 +1,8 @@
+import { ActorNotFoundError } from '../src/operations/domain/actor/actor-not-found';
 import { ActiveShiftAlreadyExistsError } from '../src/operations/domain/shift/active-shift-already-exists';
 import { MultipleActiveShiftsError } from '../src/operations/domain/shift/multiple-active-shifts';
 import { ShiftNotFoundError } from '../src/operations/domain/shift/shift-not-found';
+import { ActorRecord } from '../src/operations/application/actor-persistence';
 import { CloseShiftUseCase } from '../src/operations/application/close-shift-use-case';
 import { GetActiveShiftUseCase } from '../src/operations/application/get-active-shift-use-case';
 import { ShiftRecord } from '../src/operations/application/shift-persistence';
@@ -8,7 +10,7 @@ import { StartShiftUseCase } from '../src/operations/application/start-shift-use
 
 describe('Shift use cases integration', () => {
   const siteId = 'site-1';
-  const operatorId = 'operator-1';
+  const actorId = '00000000-0000-0000-0000-000000000020';
   const startedAt = new Date('2026-07-10T08:00:00.000Z');
   const endedAt = new Date('2026-07-10T16:00:00.000Z');
 
@@ -42,11 +44,34 @@ describe('Shift use cases integration', () => {
     };
   }
 
+  function createActorRepository(options?: { actorExists?: boolean }) {
+    const actor: ActorRecord = {
+      id: actorId,
+      siteId: '00000000-0000-0000-0000-000000000010',
+      name: 'Juan Pérez',
+      role: 'PORTER',
+      status: 'ACTIVE',
+    };
+
+    return {
+      save: jest.fn(),
+      findById: jest.fn(async (id: string) => {
+        if (options?.actorExists === false) {
+          return null;
+        }
+
+        return id === actorId ? structuredClone(actor) : null;
+      }),
+      findBySite: jest.fn(),
+    };
+  }
+
   function createDependencies(
     shiftRepository: ReturnType<typeof createShiftRepository>,
     options?: {
       ids?: string[];
       timestamps?: Date[];
+      actorExists?: boolean;
     },
   ) {
     const ids = [...(options?.ids ?? ['shift-1', 'flow-started-1'])];
@@ -57,6 +82,9 @@ describe('Shift use cases integration', () => {
 
     return {
       shiftRepository,
+      actorRepository: createActorRepository({
+        actorExists: options?.actorExists,
+      }),
       idGenerator: {
         generate: () => {
           const id = ids.shift();
@@ -90,14 +118,14 @@ describe('Shift use cases integration', () => {
 
       const result = await useCase.execute({
         siteId,
-        operatorId,
+        actorId,
         shiftType: 'Mañana',
       });
 
       expect(result).toEqual({
         id: 'shift-1',
         siteId,
-        operatorId,
+        actorId,
         type: 'Mañana',
         status: 'OPEN',
         startedAt,
@@ -107,7 +135,7 @@ describe('Shift use cases integration', () => {
       expect(shiftRepository.save).toHaveBeenCalledWith({
         id: 'shift-1',
         siteId,
-        operatorId,
+        actorId,
         type: 'Mañana',
         status: 'OPEN',
         startedAt,
@@ -120,7 +148,7 @@ describe('Shift use cases integration', () => {
       shiftRepository.shifts.set('existing-shift', {
         id: 'existing-shift',
         siteId,
-        operatorId: 'operator-0',
+        actorId: '00000000-0000-0000-0000-000000000030',
         type: 'Noche',
         status: 'OPEN',
         startedAt,
@@ -131,10 +159,27 @@ describe('Shift use cases integration', () => {
       await expect(
         useCase.execute({
           siteId,
-          operatorId,
+          actorId,
           shiftType: 'Mañana',
         }),
       ).rejects.toBeInstanceOf(ActiveShiftAlreadyExistsError);
+
+      expect(shiftRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects starting a shift when the actor does not exist', async () => {
+      const shiftRepository = createShiftRepository();
+      const useCase = new StartShiftUseCase(
+        createDependencies(shiftRepository, { actorExists: false }),
+      );
+
+      await expect(
+        useCase.execute({
+          siteId,
+          actorId,
+          shiftType: 'Mañana',
+        }),
+      ).rejects.toBeInstanceOf(ActorNotFoundError);
 
       expect(shiftRepository.save).not.toHaveBeenCalled();
     });
@@ -146,7 +191,7 @@ describe('Shift use cases integration', () => {
       shiftRepository.shifts.set('shift-1', {
         id: 'shift-1',
         siteId,
-        operatorId,
+        actorId,
         type: 'Mañana',
         status: 'OPEN',
         startedAt,
@@ -164,7 +209,7 @@ describe('Shift use cases integration', () => {
       expect(result).toEqual({
         id: 'shift-1',
         siteId,
-        operatorId,
+        actorId,
         type: 'Mañana',
         status: 'CLOSED',
         startedAt,
@@ -174,7 +219,7 @@ describe('Shift use cases integration', () => {
       expect(shiftRepository.update).toHaveBeenCalledWith({
         id: 'shift-1',
         siteId,
-        operatorId,
+        actorId,
         type: 'Mañana',
         status: 'CLOSED',
         startedAt,
@@ -198,7 +243,7 @@ describe('Shift use cases integration', () => {
       shiftRepository.shifts.set('shift-1', {
         id: 'shift-1',
         siteId,
-        operatorId,
+        actorId,
         type: 'Mañana',
         status: 'CLOSED',
         startedAt,
@@ -220,7 +265,7 @@ describe('Shift use cases integration', () => {
       shiftRepository.shifts.set('shift-1', {
         id: 'shift-1',
         siteId,
-        operatorId,
+        actorId,
         type: 'Tarde',
         status: 'OPEN',
         startedAt,
@@ -235,7 +280,7 @@ describe('Shift use cases integration', () => {
       expect(result).toEqual({
         id: 'shift-1',
         siteId,
-        operatorId,
+        actorId,
         type: 'Tarde',
         status: 'OPEN',
         startedAt,
@@ -248,7 +293,7 @@ describe('Shift use cases integration', () => {
       shiftRepository.shifts.set('shift-1', {
         id: 'shift-1',
         siteId,
-        operatorId,
+        actorId,
         type: 'Mañana',
         status: 'CLOSED',
         startedAt,
@@ -268,7 +313,7 @@ describe('Shift use cases integration', () => {
       shiftRepository.shifts.set('shift-1', {
         id: 'shift-1',
         siteId,
-        operatorId,
+        actorId,
         type: 'Mañana',
         status: 'OPEN',
         startedAt,
@@ -277,7 +322,7 @@ describe('Shift use cases integration', () => {
       shiftRepository.shifts.set('shift-2', {
         id: 'shift-2',
         siteId,
-        operatorId: 'operator-2',
+        actorId: '00000000-0000-0000-0000-000000000031',
         type: 'Tarde',
         status: 'OPEN',
         startedAt: new Date('2026-07-10T14:00:00.000Z'),
@@ -308,7 +353,7 @@ describe('Shift use cases integration', () => {
 
       const started = await startUseCase.execute({
         siteId,
-        operatorId,
+        actorId,
         shiftType: 'Mañana',
       });
       const active = await getActiveUseCase.execute({ siteId });

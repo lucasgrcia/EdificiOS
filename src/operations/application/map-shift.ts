@@ -7,7 +7,7 @@ export function toShiftRecord(shift: ShiftAggregate): ShiftRecord {
   return {
     id: shift.id,
     siteId: shift.siteId,
-    operatorId: shift.operatorId,
+    actorId: shift.actorId,
     type: shift.shiftType,
     status: shift.currentStatus,
     startedAt: shift.startedAt,
@@ -19,7 +19,7 @@ export function rehydrateShift(record: ShiftRecord): ShiftAggregate {
   return ShiftAggregate.rehydrate({
     shiftId: record.id,
     siteId: record.siteId,
-    operatorId: record.operatorId,
+    actorId: record.actorId,
     shiftType: record.type,
     status: record.status as ShiftStatusLevel,
     startedAt: record.startedAt,
@@ -33,7 +33,7 @@ export function toShiftResult(record: ShiftRecord): ShiftResult {
   return {
     id: shift.id,
     siteId: shift.siteId,
-    operatorId: shift.operatorId,
+    actorId: shift.actorId,
     type: shift.shiftType,
     status: shift.currentStatus,
     startedAt: shift.startedAt,

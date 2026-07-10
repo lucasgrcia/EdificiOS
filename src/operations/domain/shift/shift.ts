@@ -1,7 +1,7 @@
 import { ShiftContinuityClosed } from './shift-continuity-closed';
 import { ShiftContinuityStarted } from './shift-continuity-started';
+import { ActorId } from '../actor/value-objects/actor-id';
 import { EndedAt } from './value-objects/ended-at';
-import { OperatorId } from './value-objects/operator-id';
 import { ShiftId } from './value-objects/shift-id';
 import { ShiftStatus, ShiftStatusLevel } from './value-objects/shift-status';
 import { ShiftType } from './value-objects/shift-type';
@@ -14,7 +14,7 @@ export type StartShiftInput = {
   shiftId: string;
   flowId: string;
   siteId: string;
-  operatorId: string;
+  actorId: string;
   shiftType: string;
   startedAt: Date;
 };
@@ -27,7 +27,7 @@ export type CloseShiftInput = {
 export type RehydrateShiftInput = {
   shiftId: string;
   siteId: string;
-  operatorId: string;
+  actorId: string;
   shiftType: string;
   status: ShiftStatusLevel;
   startedAt: Date;
@@ -40,7 +40,7 @@ export class ShiftAggregate {
   private constructor(
     private readonly shiftIdentifier: ShiftId,
     private readonly shiftSiteId: SiteId,
-    private readonly shiftOperatorId: OperatorId,
+    private readonly shiftActorId: ActorId,
     private readonly shiftTypeValue: ShiftType,
     private readonly shiftStartedAt: StartedAt,
     private status: ShiftStatus,
@@ -55,7 +55,7 @@ export class ShiftAggregate {
     const shift = new ShiftAggregate(
       ShiftId.create(input.shiftId),
       SiteId.create(input.siteId),
-      OperatorId.create(input.operatorId),
+      ActorId.create(input.actorId),
       ShiftType.create(input.shiftType),
       StartedAt.create(input.startedAt),
       ShiftStatus.open(),
@@ -82,7 +82,7 @@ export class ShiftAggregate {
     return new ShiftAggregate(
       ShiftId.create(input.shiftId),
       SiteId.create(input.siteId),
-      OperatorId.create(input.operatorId),
+      ActorId.create(input.actorId),
       ShiftType.create(input.shiftType),
       startedAt,
       status,
@@ -104,7 +104,7 @@ export class ShiftAggregate {
     const shift = new ShiftAggregate(
       ShiftId.create(first.shiftId),
       SiteId.create(first.siteId),
-      OperatorId.create(first.operatorId),
+      ActorId.create(first.actorId),
       ShiftType.create(first.shiftType),
       StartedAt.create(first.startedAt),
       ShiftStatus.open(),
@@ -126,8 +126,8 @@ export class ShiftAggregate {
     return this.shiftSiteId.toString();
   }
 
-  get operatorId(): string {
-    return this.shiftOperatorId.toString();
+  get actorId(): string {
+    return this.shiftActorId.toString();
   }
 
   get shiftType(): string {
@@ -172,7 +172,7 @@ export class ShiftAggregate {
         flowId,
         this.id,
         this.siteId,
-        this.operatorId,
+        this.actorId,
         this.shiftType,
         this.startedAt,
       ),

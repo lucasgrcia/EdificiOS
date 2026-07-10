@@ -6,6 +6,7 @@ import { Test } from '@nestjs/testing';
 
 import { GetActiveShiftUseCase } from '../src/operations/application/get-active-shift-use-case';
 import { GetSiteByIdUseCase } from '../src/operations/application/get-site-by-id-use-case';
+import { ListActorsBySiteUseCase } from '../src/operations/application/list-actors-by-site-use-case';
 import { ListAssetsBySiteUseCase } from '../src/operations/application/list-assets-by-site-use-case';
 import { ListSitesUseCase } from '../src/operations/application/list-sites-use-case';
 import { RegisterSiteUseCase } from '../src/operations/application/register-site-use-case';
@@ -65,6 +66,10 @@ describe('Site HTTP integration', () => {
         },
         {
           provide: ListAssetsBySiteUseCase,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: ListActorsBySiteUseCase,
           useValue: { execute: jest.fn() },
         },
         {

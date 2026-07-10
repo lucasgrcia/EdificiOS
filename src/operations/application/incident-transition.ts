@@ -1,3 +1,4 @@
+import { ActorId } from '../domain/actor/value-objects/actor-id';
 import { AssetId } from '../domain/asset/value-objects/asset-id';
 import { ShiftId } from '../domain/shift/value-objects/shift-id';
 import { IncidentAggregate } from '../domain/incident';
@@ -14,6 +15,7 @@ export function rehydrateIncident(record: IncidentRecord): IncidentAggregate {
     incidentId: record.id,
     assetId: AssetId.create(record.currentProjectionState.assetId),
     shiftId: ShiftId.create(record.currentProjectionState.shiftId),
+    actorId: ActorId.create(record.currentProjectionState.actorId),
     description: record.description,
     detectedAt: new Date(record.currentProjectionState.detectedAt),
     status: record.currentProjectionState.status,

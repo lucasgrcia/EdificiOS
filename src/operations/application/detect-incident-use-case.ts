@@ -1,3 +1,4 @@
+import { ActorId } from '../domain/actor/value-objects/actor-id';
 import { AssetId } from '../domain/asset/value-objects/asset-id';
 import { AssetNotFoundError } from '../domain/asset/asset-not-found';
 import { IncidentAggregate } from '../domain/incident';
@@ -52,6 +53,7 @@ export class DetectIncidentUseCase {
 
     const assetId = AssetId.create(assetRecord.id);
     const shiftId = ShiftId.create(activeShifts[0].id);
+    const actorId = ActorId.create(activeShifts[0].actorId);
 
     return this.dependencies.transactionRunner.run(async (transaction) => {
       const incidentId = this.dependencies.idGenerator.generate();
@@ -64,6 +66,7 @@ export class DetectIncidentUseCase {
         flowId: eventId,
         assetId,
         shiftId,
+        actorId,
         description: command.description,
         detectedAt,
       });
@@ -89,6 +92,7 @@ export class DetectIncidentUseCase {
           detectedAt: incident.detectedAt.toISOString(),
           assetId: assetId.toString(),
           shiftId: shiftId.toString(),
+          actorId: actorId.toString(),
         },
         createdAt: incident.detectedAt,
       });

@@ -33,6 +33,7 @@ describe('PostgresOperationsTransactionRunner integration', () => {
             detectedAt: '2026-07-07T15:00:00.000Z',
             assetId: '00000000-0000-0000-0000-000000000099',
             shiftId: '00000000-0000-0000-0000-000000000030',
+            actorId: '00000000-0000-0000-0000-000000000020',
           },
           createdAt: new Date('2026-07-07T15:00:00.000Z'),
         });

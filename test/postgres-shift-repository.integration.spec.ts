@@ -9,7 +9,7 @@ describe('PostgresShiftRepository integration', () => {
   const openShift: ShiftRecord = {
     id: '00000000-0000-0000-0000-000000000001',
     siteId,
-    operatorId: '00000000-0000-0000-0000-000000000030',
+    actorId: '00000000-0000-0000-0000-000000000030',
     type: 'Mañana',
     status: 'OPEN',
     startedAt,
@@ -18,7 +18,7 @@ describe('PostgresShiftRepository integration', () => {
   const secondOpenShift: ShiftRecord = {
     id: '00000000-0000-0000-0000-000000000002',
     siteId,
-    operatorId: '00000000-0000-0000-0000-000000000031',
+    actorId: '00000000-0000-0000-0000-000000000031',
     type: 'Tarde',
     status: 'OPEN',
     startedAt: new Date('2026-07-10T14:00:00.000Z'),
@@ -27,7 +27,7 @@ describe('PostgresShiftRepository integration', () => {
   const closedShift: ShiftRecord = {
     id: '00000000-0000-0000-0000-000000000003',
     siteId,
-    operatorId: '00000000-0000-0000-0000-000000000032',
+    actorId: '00000000-0000-0000-0000-000000000032',
     type: 'Noche',
     status: 'CLOSED',
     startedAt: new Date('2026-07-09T20:00:00.000Z'),
@@ -36,7 +36,7 @@ describe('PostgresShiftRepository integration', () => {
   const otherSiteShift: ShiftRecord = {
     id: '00000000-0000-0000-0000-000000000004',
     siteId: otherSiteId,
-    operatorId: '00000000-0000-0000-0000-000000000033',
+    actorId: '00000000-0000-0000-0000-000000000033',
     type: 'Mañana',
     status: 'OPEN',
     startedAt,
@@ -52,7 +52,7 @@ describe('PostgresShiftRepository integration', () => {
           const [
             id,
             recordSiteId,
-            operatorId,
+            actorId,
             type,
             status,
             recordStartedAt,
@@ -70,7 +70,7 @@ describe('PostgresShiftRepository integration', () => {
           shifts.set(id, {
             id,
             siteId: recordSiteId,
-            operatorId,
+            actorId,
             type,
             status,
             startedAt: recordStartedAt,
@@ -84,7 +84,7 @@ describe('PostgresShiftRepository integration', () => {
           const [
             id,
             recordSiteId,
-            operatorId,
+            actorId,
             type,
             status,
             recordStartedAt,
@@ -106,7 +106,7 @@ describe('PostgresShiftRepository integration', () => {
           shifts.set(id, {
             id,
             siteId: recordSiteId,
-            operatorId,
+            actorId,
             type,
             status,
             startedAt: recordStartedAt,
@@ -130,7 +130,7 @@ describe('PostgresShiftRepository integration', () => {
               {
                 id: record.id,
                 site_id: record.siteId,
-                operator_id: record.operatorId,
+                operator_id: record.actorId,
                 type: record.type,
                 status: record.status,
                 started_at: record.startedAt,
@@ -154,7 +154,7 @@ describe('PostgresShiftRepository integration', () => {
             .map((record) => ({
               id: record.id,
               site_id: record.siteId,
-              operator_id: record.operatorId,
+              operator_id: record.actorId,
               type: record.type,
               status: record.status,
               started_at: record.startedAt,
@@ -189,7 +189,7 @@ describe('PostgresShiftRepository integration', () => {
     expect(queries[0].values).toEqual([
       openShift.id,
       openShift.siteId,
-      openShift.operatorId,
+      openShift.actorId,
       openShift.type,
       openShift.status,
       openShift.startedAt,
@@ -218,7 +218,7 @@ describe('PostgresShiftRepository integration', () => {
           {
             id: closedShift.id,
             site_id: closedShift.siteId,
-            operator_id: closedShift.operatorId,
+            operator_id: closedShift.actorId,
             type: closedShift.type,
             status: closedShift.status,
             started_at: closedShift.startedAt,

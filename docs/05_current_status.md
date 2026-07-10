@@ -2,7 +2,7 @@
 
 Última actualización: 2026-07-10
 
-Sprint 5 finalizado.
+Sprint 6 — PR5 en revisión.
 
 ---
 
@@ -13,7 +13,7 @@ Sprint 5 finalizado.
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Tests | 215/215 OK |
+| Tests | 256/256 OK |
 | Build | OK |
 
 ---
@@ -74,6 +74,16 @@ Sprint 5 finalizado.
 | PR4 | Integración Asset → Site | ✔ |
 | PR5 | Revisión arquitectónica + cierre | ✔ |
 
+### Sprint 6 — Actor
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | Dominio `ActorAggregate` | ✔ |
+| PR2 | Persistencia `actors` | ✔ |
+| PR3 | HTTP Actor | ✔ |
+| PR4 | Integración Actor ↔ Shift | ✔ |
+| PR5 | Integración Actor ↔ Incident | En revisión |
+
 ---
 
 ## Funcionalidades implementadas
@@ -83,11 +93,16 @@ Sprint 5 finalizado.
 | Operación | Endpoint | Requisito |
 |-----------|----------|-----------|
 | Detect | `POST /api/v1/operations/incidents` | Asset existente + Shift activo del Site |
+
+El sistema resuelve automáticamente `actorId` desde el Actor del Shift activo. El cliente envía solo `assetId` y `description`.
+
+| Operación | Endpoint | Requisito |
+|-----------|----------|-----------|
 | Assign | `POST /api/v1/operations/incidents/:id/assign` | — |
 | Start | `POST /api/v1/operations/incidents/:id/start` | — |
 | Resolve | `POST /api/v1/operations/incidents/:id/resolve` | — |
 
-La proyección de Incident incluye `assetId` y `shiftId`.
+La proyección de Incident incluye `assetId`, `shiftId` y `actorId` (Actor del Turno al momento de la detección).
 
 ### Site
 
@@ -138,7 +153,7 @@ PostgreSQL directo (`pg`). Sin ORM. Sin Foreign Keys entre agregados.
 
 | Tabla | Rol |
 |-------|-----|
-| `incidents` | Proyección del agregado Incident (`assetId`, `shiftId` en jsonb) |
+| `incidents` | Proyección del agregado Incident (`assetId`, `shiftId`, `actorId` en jsonb) |
 | `events` | Event Log append-only |
 | `outbox` | Mensajes pendientes de publicación |
 | `evidences` | Metadata de pruebas físicas |
@@ -154,7 +169,7 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 ## Tests
 
 ```
-21 test suites — 215 tests — 0 fallos
+24 test suites — 256 tests — 0 fallos
 ```
 
 | Área | Archivos |
@@ -180,9 +195,11 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - Site y Asset: persistencia CRUD inmutable (`register` / `rehydrate`).
 - Evidence respalda Domain Events, no Incident (ADR-006).
 - Site es agregado explícito; Asset referencia Site por identidad (ADR-007).
-- Incident requiere Asset + Shift activo del Site del Asset.
+- Incident requiere Asset + Shift activo del Site del Asset; el Actor se resuelve desde el Shift.
 
 Documentación de decisiones: `docs/architecture_decisions/`.
+
+Glosario ubicuo: `docs/glossary.md`. Deuda arquitectónica: `docs/architecture_backlog.md`.
 
 ---
 
@@ -200,22 +217,14 @@ Documentación de decisiones: `docs/architecture_decisions/`.
 
 ## Backlog inmediato
 
-### P1 — deuda técnica conocida
+La deuda arquitectónica P1/P2 priorizada vive en **`docs/architecture_backlog.md`** (fuente canónica, consolidada desde las Architecture Reviews).
 
-- Unificar `SiteId` duplicado (`domain/site/` vs `domain/shift/`).
-- Validar existencia de Site en `StartShiftUseCase` y `ListAssetsBySiteUseCase`.
-- `storageReference`: evolucionar a `FileStorage.generateReference()`.
-- Validar existencia del Domain Event antes de `associate()`.
-- Incluir `assetId` y `shiftId` en payload de `workflow.flow.detected` para replay completo.
-- Concurrencia optimista en `updateProjection` y `start()` de Shift.
-- Errores HTTP tipados para `Shift is already closed`.
-- Alinear Field Story 006 eventos (`operations.shift.*` vs `shift.continuity.*`).
-- Paginación en `ListSitesUseCase`.
+Resumen de ítems P1 activos:
 
-### Política de almacenamiento
+- Event Log incompleto para replay (`assetId`, `shiftId`, `actorId` en `workflow.flow.detected`)
+- Integridad referencial asimétrica (Site, Actor)
+- `SiteId` y `ActorId` duplicados en dominio
+- Concurrencia optimista y TOCTOU
+- Proyecciones legacy, errores HTTP, tests HTTP de Incident
 
-Local filesystem hasta que una Field Story real exija otra cosa.
-
-### Regla de identidad
-
-El SHA-256 verifica integridad, no identidad. Dos capturas idénticas son dos evidencias distintas. Sin deduplicación automática por hash.
+Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`.

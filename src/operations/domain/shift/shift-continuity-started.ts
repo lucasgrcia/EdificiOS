@@ -9,7 +9,7 @@ export class ShiftContinuityStarted implements DomainEvent {
     readonly id: string,
     readonly shiftId: string,
     readonly siteId: string,
-    readonly operatorId: string,
+    readonly actorId: string,
     readonly shiftType: string,
     readonly startedAt: Date,
   ) {}

@@ -6,6 +6,23 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.6.0-alpha] - 2026-07-10
+
+### Added
+
+#### Sprint 6 — Integración Actor ↔ Incident (PR5)
+
+- `DetectIncidentUseCase` resuelve `actorId` desde el Actor del Shift activo; el cliente no lo envía.
+- Proyección de Incident incluye `actorId` junto a `assetId` y `shiftId`.
+- `IncidentAggregate.detect()` y `rehydrate()` persisten el Actor de detección.
+
+### Changed
+
+- Flujo de detección: Asset → Site → Shift activo → Actor del Shift → `Incident.detect()`.
+- Field Stories 001 y 005 actualizadas con Actor resuelto desde el Turno.
+
+---
+
 ## [0.5.0-alpha] - 2026-07-10
 
 ### Added

@@ -25,7 +25,7 @@ export class PostgresShiftRepository implements ShiftRepository {
       [
         shift.id,
         shift.siteId,
-        shift.operatorId,
+        shift.actorId,
         shift.type,
         shift.status,
         shift.startedAt,
@@ -96,7 +96,7 @@ export class PostgresShiftRepository implements ShiftRepository {
       [
         shift.id,
         shift.siteId,
-        shift.operatorId,
+        shift.actorId,
         shift.type,
         shift.status,
         shift.startedAt,
@@ -121,7 +121,7 @@ export class PostgresShiftRepository implements ShiftRepository {
     return {
       id: row.id,
       siteId: row.site_id,
-      operatorId: row.operator_id,
+      actorId: row.operator_id,
       type: row.type,
       status: row.status,
       startedAt: row.started_at,

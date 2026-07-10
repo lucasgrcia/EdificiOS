@@ -1,4 +1,5 @@
 import { IncidentAggregate } from '../src/operations/domain/incident';
+import { ActorId } from '../src/operations/domain/actor/value-objects/actor-id';
 import { AssetId } from '../src/operations/domain/asset/value-objects/asset-id';
 import { ShiftId } from '../src/operations/domain/shift/value-objects/shift-id';
 import { pullExactlyOneDomainEvent } from '../src/operations/application/pull-exactly-one-domain-event';
@@ -11,6 +12,7 @@ describe('pullExactlyOneDomainEvent', () => {
       flowId: 'event-1',
       assetId: AssetId.create('asset-1'),
       shiftId: ShiftId.create('shift-1'),
+      actorId: ActorId.create('00000000-0000-0000-0000-000000000020'),
       description: 'Carlos detects a leak.',
       detectedAt: new Date('2026-07-07T15:00:00.000Z'),
     });
@@ -26,6 +28,7 @@ describe('pullExactlyOneDomainEvent', () => {
       incidentId: 'incident-1',
       assetId: AssetId.create('asset-1'),
       shiftId: ShiftId.create('shift-1'),
+      actorId: ActorId.create('00000000-0000-0000-0000-000000000020'),
       description: 'Carlos detects a leak.',
       detectedAt: new Date('2026-07-07T15:00:00.000Z'),
       status: 'DETECTED',
@@ -42,6 +45,7 @@ describe('pullExactlyOneDomainEvent', () => {
       flowId: 'event-1',
       assetId: AssetId.create('asset-1'),
       shiftId: ShiftId.create('shift-1'),
+      actorId: ActorId.create('00000000-0000-0000-0000-000000000020'),
       description: 'Carlos detects a leak.',
       detectedAt: new Date('2026-07-07T15:00:00.000Z'),
     });
@@ -75,6 +79,7 @@ describe('PostgresIncidentRepository updateProjection', () => {
           detectedAt: '2026-07-07T15:00:00.000Z',
           assetId: 'asset-1',
           shiftId: 'shift-1',
+          actorId: '00000000-0000-0000-0000-000000000020',
         },
         createdAt: new Date('2026-07-07T15:00:00.000Z'),
       }),

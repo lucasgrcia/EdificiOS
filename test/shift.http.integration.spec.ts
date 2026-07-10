@@ -8,10 +8,12 @@ import { CloseShiftUseCase } from '../src/operations/application/close-shift-use
 import { GetActiveShiftUseCase } from '../src/operations/application/get-active-shift-use-case';
 import { GetSiteByIdUseCase } from '../src/operations/application/get-site-by-id-use-case';
 import { ListSitesUseCase } from '../src/operations/application/list-sites-use-case';
+import { ListActorsBySiteUseCase } from '../src/operations/application/list-actors-by-site-use-case';
 import { ListAssetsBySiteUseCase } from '../src/operations/application/list-assets-by-site-use-case';
 import { RegisterSiteUseCase } from '../src/operations/application/register-site-use-case';
 import { ShiftResult } from '../src/operations/application/shift-result';
 import { StartShiftUseCase } from '../src/operations/application/start-shift-use-case';
+import { ActorNotFoundError } from '../src/operations/domain/actor/actor-not-found';
 import { ActiveShiftAlreadyExistsError } from '../src/operations/domain/shift/active-shift-already-exists';
 import { ShiftNotFoundError } from '../src/operations/domain/shift/shift-not-found';
 import { ShiftsController } from '../src/operations/infrastructure/http/shifts.controller';
@@ -21,13 +23,13 @@ import { StartShiftRequestPipe } from '../src/operations/infrastructure/http/sta
 describe('Shift HTTP integration', () => {
   const siteId = '00000000-0000-0000-0000-000000000010';
   const shiftId = '00000000-0000-0000-0000-000000000001';
-  const operatorId = '00000000-0000-0000-0000-000000000020';
+  const actorId = '00000000-0000-0000-0000-000000000020';
   const startedAt = new Date('2026-07-10T08:00:00.000Z');
   const endedAt = new Date('2026-07-10T16:00:00.000Z');
   const openShift: ShiftResult = {
     id: shiftId,
     siteId,
-    operatorId,
+    actorId,
     type: 'Mañana',
     status: 'OPEN',
     startedAt,
@@ -87,6 +89,10 @@ describe('Shift HTTP integration', () => {
           provide: ListSitesUseCase,
           useValue: { execute: jest.fn() },
         },
+        {
+          provide: ListActorsBySiteUseCase,
+          useValue: { execute: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -113,7 +119,7 @@ describe('Shift HTTP integration', () => {
         method: 'POST',
         url: `/api/v1/operations/sites/${siteId}/shifts/start`,
         payload: {
-          operatorId,
+          actorId,
           shiftType: 'Mañana',
         },
       });
@@ -127,19 +133,19 @@ describe('Shift HTTP integration', () => {
         method: 'POST',
         url: `/api/v1/operations/sites/${siteId}/shifts/start`,
         payload: {
-          operatorId: ` ${operatorId} `,
+          actorId: ` ${actorId} `,
           shiftType: ' Mañana ',
         },
       });
 
       expect(startShiftUseCase.execute).toHaveBeenCalledWith({
         siteId,
-        operatorId,
+        actorId,
         shiftType: 'Mañana',
       });
     });
 
-    it('returns 400 when operatorId is missing', async () => {
+    it('returns 400 when actorId is missing', async () => {
       const response = await app.inject({
         method: 'POST',
         url: `/api/v1/operations/sites/${siteId}/shifts/start`,
@@ -149,8 +155,26 @@ describe('Shift HTTP integration', () => {
       });
 
       expect(response.statusCode).toBe(400);
-      expect(response.json().message).toBe('Operator id is required.');
+      expect(response.json().message).toBe('Actor id is required.');
       expect(startShiftUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 when actor is not found', async () => {
+      startShiftUseCase.execute.mockRejectedValueOnce(
+        new ActorNotFoundError(actorId),
+      );
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/operations/sites/${siteId}/shifts/start`,
+        payload: {
+          actorId,
+          shiftType: 'Mañana',
+        },
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json().message).toBe('Actor was not found.');
     });
 
     it('returns 409 when site already has an active shift', async () => {
@@ -162,7 +186,7 @@ describe('Shift HTTP integration', () => {
         method: 'POST',
         url: `/api/v1/operations/sites/${siteId}/shifts/start`,
         payload: {
-          operatorId,
+          actorId,
           shiftType: 'Mañana',
         },
       });

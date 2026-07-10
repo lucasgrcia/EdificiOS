@@ -29,7 +29,7 @@ describe('DetectIncidentUseCase integration', () => {
   const activeShift: ShiftRecord = {
     id: shiftId,
     siteId,
-    operatorId: '00000000-0000-0000-0000-000000000020',
+    actorId: '00000000-0000-0000-0000-000000000020',
     type: 'Mañana',
     status: 'OPEN',
     startedAt: new Date('2026-07-10T08:00:00.000Z'),
@@ -146,6 +146,7 @@ describe('DetectIncidentUseCase integration', () => {
         detectedAt: '2026-07-07T15:00:00.000Z',
         assetId,
         shiftId,
+        actorId: activeShift.actorId,
       },
     });
   });
@@ -182,7 +183,7 @@ describe('DetectIncidentUseCase integration', () => {
     expect(writes).toEqual([]);
   });
 
-  it('associates the incident with the active shift of the asset site', async () => {
+  it('resolves actorId from the active shift without client input', async () => {
     const { useCase, writes } = createHarness();
 
     await useCase.execute({
@@ -194,6 +195,7 @@ describe('DetectIncidentUseCase integration', () => {
       currentProjectionState: {
         assetId,
         shiftId,
+        actorId: activeShift.actorId,
         description: 'Ascensor detenido entre pisos.',
       },
     });

@@ -4,7 +4,9 @@ Before changing any code, inspect:
 
 docs/00_project_brief.md
 
-docs/03_glossary.md
+docs/glossary.md
+
+docs/architecture_backlog.md
 
 docs/06_rules.md
 

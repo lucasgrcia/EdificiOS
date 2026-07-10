@@ -34,7 +34,7 @@ const assetRecord: AssetRecord = {
 const activeShift: ShiftRecord = {
   id: SHIFT_ID,
   siteId: 'site-1',
-  operatorId: 'operator-1',
+  actorId: '00000000-0000-0000-0000-000000000020',
   type: 'Mañana',
   status: 'OPEN',
   startedAt: new Date('2026-07-10T08:00:00.000Z'),
@@ -231,6 +231,7 @@ describe('Incident lifecycle integration', () => {
       detectedAt: '2026-07-07T15:00:00.000Z',
       assetId: ASSET_ID,
       shiftId: SHIFT_ID,
+      actorId: activeShift.actorId,
       assignedAt: '2026-07-07T15:10:00.000Z',
       assignedActorId: 'actor-1',
       startedAt: '2026-07-07T15:20:00.000Z',

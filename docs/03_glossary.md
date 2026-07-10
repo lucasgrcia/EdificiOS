@@ -1,37 +1,5 @@
-Shift
+# Glosario (redirigido)
 
-Unidad operativa.
+El glosario canónico del lenguaje ubicuo está en **`docs/glossary.md`**.
 
-Nunca usar "Guardia".
-
----
-
-Incident
-
-Problema operativo.
-
-Nunca usar Ticket.
-
----
-
-Evidence
-
-Prueba física.
-
-Nunca usar Attachment.
-
----
-
-Policy
-
-Regla de negocio.
-
-Nunca usar Config.
-
----
-
-Work
-
-Concepto de negocio.
-
-No es una clase del dominio.
+Este archivo se mantiene por compatibilidad con referencias históricas. No editar aquí; actualizar `glossary.md`.

@@ -11,14 +11,17 @@ import {
 } from '@nestjs/common';
 
 import { AssetResult } from '../../application/asset-result';
+import { ActorResult } from '../../application/actor-result';
 import { GetActiveShiftUseCase } from '../../application/get-active-shift-use-case';
 import { GetSiteByIdUseCase } from '../../application/get-site-by-id-use-case';
+import { ListActorsBySiteUseCase } from '../../application/list-actors-by-site-use-case';
 import { ListAssetsBySiteUseCase } from '../../application/list-assets-by-site-use-case';
 import { ListSitesUseCase } from '../../application/list-sites-use-case';
 import { RegisterSiteUseCase } from '../../application/register-site-use-case';
 import { StartShiftUseCase } from '../../application/start-shift-use-case';
 import { ShiftResult } from '../../application/shift-result';
 import { SiteResult } from '../../application/site-result';
+import { ActorNotFoundError } from '../../domain/actor/actor-not-found';
 import { ActiveShiftAlreadyExistsError } from '../../domain/shift/active-shift-already-exists';
 import { MultipleActiveShiftsError } from '../../domain/shift/multiple-active-shifts';
 import { RegisterSiteRequestDto } from './register-site.dto';
@@ -33,6 +36,7 @@ export class SitesController {
     private readonly getSiteByIdUseCase: GetSiteByIdUseCase,
     private readonly listSitesUseCase: ListSitesUseCase,
     private readonly listAssetsBySiteUseCase: ListAssetsBySiteUseCase,
+    private readonly listActorsBySiteUseCase: ListActorsBySiteUseCase,
     private readonly startShiftUseCase: StartShiftUseCase,
     private readonly getActiveShiftUseCase: GetActiveShiftUseCase,
   ) {}
@@ -60,6 +64,11 @@ export class SitesController {
     return this.listAssetsBySiteUseCase.execute({ siteId });
   }
 
+  @Get(':siteId/actors')
+  listActorsBySite(@Param('siteId') siteId: string): Promise<ActorResult[]> {
+    return this.listActorsBySiteUseCase.execute({ siteId });
+  }
+
   @Post(':siteId/shifts/start')
   @HttpCode(HttpStatus.CREATED)
   async startShift(
@@ -69,10 +78,14 @@ export class SitesController {
     try {
       return await this.startShiftUseCase.execute({
         siteId,
-        operatorId: body.operatorId,
+        actorId: body.actorId,
         shiftType: body.shiftType,
       });
     } catch (error) {
+      if (error instanceof ActorNotFoundError) {
+        throw new NotFoundException(error.message);
+      }
+
       if (error instanceof ActiveShiftAlreadyExistsError) {
         throw new ConflictException(error.message);
       }

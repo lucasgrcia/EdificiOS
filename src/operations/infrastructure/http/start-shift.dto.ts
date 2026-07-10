@@ -1,4 +1,4 @@
 export class StartShiftRequestDto {
-  operatorId!: string;
+  actorId!: string;
   shiftType!: string;
 }

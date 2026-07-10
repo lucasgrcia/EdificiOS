@@ -1,7 +1,7 @@
 export type ShiftRecord = {
   id: string;
   siteId: string;
-  operatorId: string;
+  actorId: string;
   type: string;
   status: string;
   startedAt: Date;

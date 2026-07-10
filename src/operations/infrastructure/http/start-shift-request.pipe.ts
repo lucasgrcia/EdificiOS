@@ -15,10 +15,10 @@ export class StartShiftRequestPipe
       throw new BadRequestException('Shift payload is required.');
     }
 
-    const operatorId = this.readRequiredString(
+    const actorId = this.readRequiredString(
       value,
-      'operatorId',
-      'Operator id is required.',
+      'actorId',
+      'Actor id is required.',
     );
     const shiftType = this.readRequiredString(
       value,
@@ -27,7 +27,7 @@ export class StartShiftRequestPipe
     );
 
     return {
-      operatorId,
+      actorId,
       shiftType,
     };
   }

@@ -67,7 +67,7 @@ Recibir información clara sobre el Asset afectado antes de llegar al edificio.
 
 ## ¿Qué hizo el sistema?
 
-Verificó que el Site existía al registrar el Asset, que el Asset existía y que había un Shift activo en el Site, detectó el Incident asociado al Asset y al Turno, conservó la Evidence y notificó a la administración.
+Verificó que el Site existía al registrar el Asset, que el Asset existía y que había un Shift activo en el Site, resolvió el Actor del Turno, detectó el Incident asociado al Asset, al Turno y al Actor, conservó la Evidence y notificó a la administración.
 
 ---
 
@@ -81,7 +81,7 @@ Un Incident sin Asset identificado no tiene contexto operativo en el edificio.
 
 Todo Asset pertenece obligatoriamente a un Site existente.
 
-Un Incident solo puede detectarse dentro de un Shift activo del Site.
+Un Incident solo puede detectarse dentro de un Shift activo del Site; el Actor se resuelve automáticamente desde ese Turno.
 
 ---
 
