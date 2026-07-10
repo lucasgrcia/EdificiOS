@@ -10,8 +10,10 @@ import { Test } from '@nestjs/testing';
 import FormData = require('form-data');
 
 import { CaptureEvidenceUseCase } from '../src/operations/application/capture-evidence-use-case';
+import { ListEvidenceByEventUseCase } from '../src/operations/application/list-evidence-by-event-use-case';
 import { CaptureEvidenceMultipartPipe } from '../src/operations/infrastructure/http/capture-evidence-multipart.pipe';
 import { EventsController } from '../src/operations/infrastructure/http/events.controller';
+import { ListEvidenceByEventParamsPipe } from '../src/operations/infrastructure/http/list-evidence-by-event-params.pipe';
 
 describe('Capture evidence HTTP integration', () => {
   const eventId = '00000000-0000-0000-0000-000000000010';
@@ -31,9 +33,14 @@ describe('Capture evidence HTTP integration', () => {
       controllers: [EventsController],
       providers: [
         CaptureEvidenceMultipartPipe,
+        ListEvidenceByEventParamsPipe,
         {
           provide: CaptureEvidenceUseCase,
           useValue: captureEvidenceUseCase,
+        },
+        {
+          provide: ListEvidenceByEventUseCase,
+          useValue: { execute: jest.fn() },
         },
       ],
     }).compile();

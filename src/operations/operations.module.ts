@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
+import { GetOperationsDashboardUseCase } from './application/get-operations-dashboard-use-case';
+import { GetIncidentByIdUseCase } from './application/get-incident-by-id-use-case';
+import { ListEvidenceByEventUseCase } from './application/list-evidence-by-event-use-case';
+import { ListIncidentsUseCase } from './application/list-incidents-use-case';
 import { AssignIncidentUseCase } from './application/assign-incident-use-case';
 import {
   CaptureEvidenceUseCase,
@@ -26,9 +30,14 @@ import { AssignIncidentRequestPipe } from './infrastructure/http/assign-incident
 import { ActorsController } from './infrastructure/http/actors.controller';
 import { AssetsController } from './infrastructure/http/assets.controller';
 import { CaptureEvidenceMultipartPipe } from './infrastructure/http/capture-evidence-multipart.pipe';
+import { DashboardController } from './infrastructure/http/dashboard.controller';
 import { DetectIncidentRequestPipe } from './infrastructure/http/detect-incident-request.pipe';
+import { GetIncidentByIdParamsPipe } from './infrastructure/http/get-incident-by-id-params.pipe';
+import { ListIncidentsQueryPipe } from './infrastructure/http/list-incidents-query.pipe';
 import { EventsController } from './infrastructure/http/events.controller';
+import { ListEvidenceByEventParamsPipe } from './infrastructure/http/list-evidence-by-event-params.pipe';
 import { IncidentsController } from './infrastructure/http/incidents.controller';
+import { IncidentQueryController } from './infrastructure/http/incident-query.controller';
 import { RegisterActorRequestPipe } from './infrastructure/http/register-actor-request.pipe';
 import { RegisterAssetRequestPipe } from './infrastructure/http/register-asset-request.pipe';
 import { RegisterSiteRequestPipe } from './infrastructure/http/register-site-request.pipe';
@@ -39,7 +48,9 @@ import { LocalFileStorage } from './infrastructure/file-storage/local-file-stora
 import { PostgresActorRepository } from './infrastructure/persistence/postgres-actor-repository';
 import { PostgresAssetRepository } from './infrastructure/persistence/postgres-asset-repository';
 import { PostgresEventEvidenceRepository } from './infrastructure/persistence/postgres-event-evidence-repository';
+import { PostgresEvidenceQueryRepository } from './infrastructure/persistence/postgres-evidence-query-repository';
 import { PostgresEvidenceRepository } from './infrastructure/persistence/postgres-evidence-repository';
+import { PostgresIncidentQueryRepository } from './infrastructure/persistence/postgres-incident-query-repository';
 import { PostgresOperationsPool } from './infrastructure/persistence/postgres-operations-pool';
 import { PostgresOperationsTransactionRunner } from './infrastructure/persistence/postgres-operations-transaction-runner';
 import { PostgresShiftRepository } from './infrastructure/persistence/postgres-shift-repository';
@@ -60,6 +71,8 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
 @Module({
   controllers: [
     IncidentsController,
+    IncidentQueryController,
+    DashboardController,
     EventsController,
     ActorsController,
     AssetsController,
@@ -69,6 +82,9 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
   providers: [
     DetectIncidentRequestPipe,
     AssignIncidentRequestPipe,
+    ListIncidentsQueryPipe,
+    GetIncidentByIdParamsPipe,
+    ListEvidenceByEventParamsPipe,
     CaptureEvidenceMultipartPipe,
     RegisterAssetRequestPipe,
     RegisterActorRequestPipe,
@@ -117,6 +133,70 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       useFactory: () =>
         new LocalFileStorage({
           basePath: process.env.EVIDENCE_STORAGE_PATH ?? './storage/evidences',
+        }),
+    },
+    {
+      provide: PostgresEvidenceQueryRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresEvidenceQueryRepository(operationsPool.pool),
+    },
+    {
+      provide: ListEvidenceByEventUseCase,
+      inject: [PostgresEvidenceQueryRepository],
+      useFactory: (evidenceQueryRepository: PostgresEvidenceQueryRepository) =>
+        new ListEvidenceByEventUseCase({
+          evidenceQueryRepository,
+        }),
+    },
+    {
+      provide: PostgresIncidentQueryRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresIncidentQueryRepository(operationsPool.pool),
+    },
+    {
+      provide: GetIncidentByIdUseCase,
+      inject: [PostgresIncidentQueryRepository],
+      useFactory: (incidentQueryRepository: PostgresIncidentQueryRepository) =>
+        new GetIncidentByIdUseCase({
+          incidentQueryRepository,
+        }),
+    },
+    {
+      provide: ListIncidentsUseCase,
+      inject: [PostgresIncidentQueryRepository, PostgresAssetRepository],
+      useFactory: (
+        incidentQueryRepository: PostgresIncidentQueryRepository,
+        assetRepository: PostgresAssetRepository,
+      ) =>
+        new ListIncidentsUseCase({
+          incidentQueryRepository,
+          assetRepository,
+        }),
+    },
+    {
+      provide: GetOperationsDashboardUseCase,
+      inject: [
+        PostgresSiteRepository,
+        PostgresAssetRepository,
+        PostgresShiftRepository,
+        PostgresIncidentQueryRepository,
+      ],
+      useFactory: (
+        siteRepository: PostgresSiteRepository,
+        assetRepository: PostgresAssetRepository,
+        shiftRepository: PostgresShiftRepository,
+        incidentQueryRepository: PostgresIncidentQueryRepository,
+      ) =>
+        new GetOperationsDashboardUseCase({
+          siteRepository,
+          assetRepository,
+          shiftRepository,
+          incidentQueryRepository,
+          clock: {
+            now: () => new Date(),
+          },
         }),
     },
     {
