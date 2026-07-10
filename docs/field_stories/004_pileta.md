@@ -2,14 +2,29 @@
 
 ## Contexto
 
-**Site:** Piscina
+**Site:** Piscina (agregado explícito)
 **Turno:** Mañana
+
+---
+
+## Site involucrado
+
+El sector operativo existe como agregado **Site** registrado en el sistema:
+
+| Atributo | Valor |
+|----------|-------|
+| Nombre | Piscina |
+| Dirección | Sector piscina — complejo residencial |
+| Zona horaria | America/Argentina/Buenos_Aires |
+| Tipo de edificio | Amenities |
+
+Todo Asset pertenece obligatoriamente a este Site.
 
 ---
 
 ## Asset involucrado
 
-La inspección y la eventual detección de anomalía se refieren a un Asset registrado:
+La inspección y la eventual detección de anomalía se refieren a un Asset registrado en el Site:
 
 | Atributo | Valor |
 |----------|-------|
@@ -47,7 +62,7 @@ Conocer que la piscina — a través de su Asset de tratamiento — requiere int
 
 ## ¿Qué hizo el sistema?
 
-Registró la inspección y detectó automáticamente que los valores requieren atención sobre el Asset involucrado, dentro del Shift activo del Site.
+Verificó que el Site existía al registrar el Asset, registró la inspección y detectó automáticamente que los valores requieren atención sobre el Asset involucrado, dentro del Shift activo del Site.
 
 ---
 
@@ -58,6 +73,8 @@ El operador registra hechos.
 El sistema interpreta las consecuencias.
 
 La intervención se entiende en términos del Asset físico del edificio, no de un identificador abstracto.
+
+Todo Asset pertenece obligatoriamente a un Site existente.
 
 ---
 

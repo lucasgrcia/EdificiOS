@@ -14,6 +14,9 @@ import { RegisterAssetUseCase } from './application/register-asset-use-case';
 import { ResolveIncidentUseCase } from './application/resolve-incident-use-case';
 import { CloseShiftUseCase } from './application/close-shift-use-case';
 import { GetActiveShiftUseCase } from './application/get-active-shift-use-case';
+import { GetSiteByIdUseCase } from './application/get-site-by-id-use-case';
+import { ListSitesUseCase } from './application/list-sites-use-case';
+import { RegisterSiteUseCase } from './application/register-site-use-case';
 import { StartShiftUseCase } from './application/start-shift-use-case';
 import { StartIncidentUseCase } from './application/start-incident-use-case';
 import { AssignIncidentRequestPipe } from './infrastructure/http/assign-incident-request.pipe';
@@ -23,6 +26,7 @@ import { DetectIncidentRequestPipe } from './infrastructure/http/detect-incident
 import { EventsController } from './infrastructure/http/events.controller';
 import { IncidentsController } from './infrastructure/http/incidents.controller';
 import { RegisterAssetRequestPipe } from './infrastructure/http/register-asset-request.pipe';
+import { RegisterSiteRequestPipe } from './infrastructure/http/register-site-request.pipe';
 import { ShiftsController } from './infrastructure/http/shifts.controller';
 import { SitesController } from './infrastructure/http/sites.controller';
 import { StartShiftRequestPipe } from './infrastructure/http/start-shift-request.pipe';
@@ -33,6 +37,7 @@ import { PostgresEvidenceRepository } from './infrastructure/persistence/postgre
 import { PostgresOperationsPool } from './infrastructure/persistence/postgres-operations-pool';
 import { PostgresOperationsTransactionRunner } from './infrastructure/persistence/postgres-operations-transaction-runner';
 import { PostgresShiftRepository } from './infrastructure/persistence/postgres-shift-repository';
+import { PostgresSiteRepository } from './infrastructure/persistence/postgres-site-repository';
 
 function createUseCaseDependencies(transactionRunner: TransactionRunner) {
   return {
@@ -59,6 +64,7 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     AssignIncidentRequestPipe,
     CaptureEvidenceMultipartPipe,
     RegisterAssetRequestPipe,
+    RegisterSiteRequestPipe,
     StartShiftRequestPipe,
     PostgresOperationsPool,
     PostgresOperationsTransactionRunner,
@@ -79,6 +85,12 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       inject: [PostgresOperationsPool],
       useFactory: (operationsPool: PostgresOperationsPool) =>
         new PostgresShiftRepository(operationsPool.pool),
+    },
+    {
+      provide: PostgresSiteRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresSiteRepository(operationsPool.pool),
     },
     {
       provide: PostgresEventEvidenceRepository,
@@ -156,10 +168,14 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     },
     {
       provide: RegisterAssetUseCase,
-      inject: [PostgresAssetRepository],
-      useFactory: (assetRepository: PostgresAssetRepository) =>
+      inject: [PostgresAssetRepository, PostgresSiteRepository],
+      useFactory: (
+        assetRepository: PostgresAssetRepository,
+        siteRepository: PostgresSiteRepository,
+      ) =>
         new RegisterAssetUseCase({
           assetRepository,
+          siteRepository,
           idGenerator: {
             generate: () => randomUUID(),
           },
@@ -215,6 +231,33 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       useFactory: (shiftRepository: PostgresShiftRepository) =>
         new GetActiveShiftUseCase({
           shiftRepository,
+        }),
+    },
+    {
+      provide: RegisterSiteUseCase,
+      inject: [PostgresSiteRepository],
+      useFactory: (siteRepository: PostgresSiteRepository) =>
+        new RegisterSiteUseCase({
+          siteRepository,
+          idGenerator: {
+            generate: () => randomUUID(),
+          },
+        }),
+    },
+    {
+      provide: GetSiteByIdUseCase,
+      inject: [PostgresSiteRepository],
+      useFactory: (siteRepository: PostgresSiteRepository) =>
+        new GetSiteByIdUseCase({
+          siteRepository,
+        }),
+    },
+    {
+      provide: ListSitesUseCase,
+      inject: [PostgresSiteRepository],
+      useFactory: (siteRepository: PostgresSiteRepository) =>
+        new ListSitesUseCase({
+          siteRepository,
         }),
     },
   ],

@@ -6,6 +6,29 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.5.0-alpha] - 2026-07-10
+
+### Added
+
+#### Sprint 5 — Site
+
+- Agregado `SiteAggregate` inmutable con VOs: `SiteId`, `SiteName`, `Address`, `TimeZone`, `BuildingType`.
+- Persistencia `sites` (migración `006_sites.sql`).
+- Casos de uso: `RegisterSiteUseCase`, `GetSiteByIdUseCase`, `ListSitesUseCase`.
+- Endpoints HTTP de Site.
+- Integración Asset → Site: registro de Asset exige Site existente.
+- Error de dominio: `SiteNotFoundError`.
+- ADR-007: Site como agregado explícito.
+
+### Changed
+
+- `AssetAggregate` referencia `SiteId` del bounded context Site.
+- `RegisterAssetUseCase` valida existencia del Site antes de persistir.
+- Field Stories 001, 004, 005 y 006 actualizadas con Site explícito.
+- `AssetsController` traduce `SiteNotFoundError` a HTTP 404.
+
+---
+
 ## [0.4.0-alpha] - 2026-07-10
 
 ### Added

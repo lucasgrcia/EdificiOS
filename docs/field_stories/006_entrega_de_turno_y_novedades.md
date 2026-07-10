@@ -2,10 +2,14 @@
 
 ## Contexto
 
-**Site:** Edificio completo
+**Site:** Edificio completo (agregado explícito)
 **Cambio:** Turno tarde → Turno noche
 
 ---
+
+## Site involucrado
+
+El edificio completo existe como agregado **Site** registrado en el sistema. Los Assets, los Shifts y los Incidents operan dentro de este Site; el edificio ya no es un supuesto implícito del contexto.
 
 ## ¿Qué ocurrió realmente?
 

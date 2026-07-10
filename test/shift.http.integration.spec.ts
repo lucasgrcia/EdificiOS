@@ -6,7 +6,10 @@ import { Test } from '@nestjs/testing';
 
 import { CloseShiftUseCase } from '../src/operations/application/close-shift-use-case';
 import { GetActiveShiftUseCase } from '../src/operations/application/get-active-shift-use-case';
+import { GetSiteByIdUseCase } from '../src/operations/application/get-site-by-id-use-case';
+import { ListSitesUseCase } from '../src/operations/application/list-sites-use-case';
 import { ListAssetsBySiteUseCase } from '../src/operations/application/list-assets-by-site-use-case';
+import { RegisterSiteUseCase } from '../src/operations/application/register-site-use-case';
 import { ShiftResult } from '../src/operations/application/shift-result';
 import { StartShiftUseCase } from '../src/operations/application/start-shift-use-case';
 import { ActiveShiftAlreadyExistsError } from '../src/operations/domain/shift/active-shift-already-exists';
@@ -70,6 +73,18 @@ describe('Shift HTTP integration', () => {
         },
         {
           provide: ListAssetsBySiteUseCase,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: RegisterSiteUseCase,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: GetSiteByIdUseCase,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: ListSitesUseCase,
           useValue: { execute: jest.fn() },
         },
       ],

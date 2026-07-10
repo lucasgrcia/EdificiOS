@@ -12,6 +12,7 @@ import {
 import { AssetResult } from '../../application/asset-result';
 import { GetAssetByIdUseCase } from '../../application/get-asset-by-id-use-case';
 import { RegisterAssetUseCase } from '../../application/register-asset-use-case';
+import { SiteNotFoundError } from '../../domain/site/site-not-found';
 import { RegisterAssetRequestDto } from './register-asset.dto';
 import { RegisterAssetRequestPipe } from './register-asset-request.pipe';
 
@@ -24,19 +25,27 @@ export class AssetsController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  register(
+  async register(
     @Body(RegisterAssetRequestPipe) body: RegisterAssetRequestDto,
   ): Promise<AssetResult> {
-    return this.registerAssetUseCase.execute({
-      siteId: body.siteId,
-      name: body.name,
-      type: body.type,
-      manufacturer: body.manufacturer,
-      model: body.model,
-      serialNumber: body.serialNumber,
-      location: body.location,
-      criticality: body.criticality,
-    });
+    try {
+      return await this.registerAssetUseCase.execute({
+        siteId: body.siteId,
+        name: body.name,
+        type: body.type,
+        manufacturer: body.manufacturer,
+        model: body.model,
+        serialNumber: body.serialNumber,
+        location: body.location,
+        criticality: body.criticality,
+      });
+    } catch (error) {
+      if (error instanceof SiteNotFoundError) {
+        throw new NotFoundException(error.message);
+      }
+
+      throw error;
+    }
   }
 
   @Get(':id')

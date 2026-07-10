@@ -1,3 +1,4 @@
+import { SiteId } from '../site/value-objects/site-id';
 import { AssetId } from './value-objects/asset-id';
 import { AssetName } from './value-objects/asset-name';
 import { AssetType } from './value-objects/asset-type';
@@ -9,6 +10,7 @@ import { SerialNumber } from './value-objects/serial-number';
 
 export type RegisterAssetInput = {
   assetId: string;
+  siteId: string;
   name: string;
   type: string;
   manufacturer?: string | null;
@@ -20,6 +22,7 @@ export type RegisterAssetInput = {
 
 export type RehydrateAssetInput = {
   assetId: string;
+  siteId: string;
   name: string;
   type: string;
   manufacturer: string | null;
@@ -32,6 +35,7 @@ export type RehydrateAssetInput = {
 export class AssetAggregate {
   private constructor(
     private readonly assetIdentifier: AssetId,
+    private readonly assetSiteId: SiteId,
     private readonly assetName: AssetName,
     private readonly assetType: AssetType,
     private readonly assetManufacturer: Manufacturer | null,
@@ -48,6 +52,7 @@ export class AssetAggregate {
 
     return new AssetAggregate(
       AssetId.create(input.assetId),
+      SiteId.create(input.siteId),
       AssetName.create(input.name),
       AssetType.create(input.type),
       input.manufacturer === undefined || input.manufacturer === null
@@ -71,6 +76,7 @@ export class AssetAggregate {
 
     return new AssetAggregate(
       AssetId.create(input.assetId),
+      SiteId.create(input.siteId),
       AssetName.create(input.name),
       AssetType.create(input.type),
       input.manufacturer === null
@@ -87,6 +93,10 @@ export class AssetAggregate {
 
   get id(): string {
     return this.assetIdentifier.toString();
+  }
+
+  get siteId(): string {
+    return this.assetSiteId.toString();
   }
 
   get name(): string {

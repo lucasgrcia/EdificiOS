@@ -108,6 +108,7 @@ describe('Asset value objects', () => {
 describe('AssetAggregate', () => {
   const validInput = {
     assetId: 'asset-1',
+    siteId: 'site-1',
     name: 'Bomba principal',
     type: 'Bomba',
     manufacturer: 'Grundfos',
@@ -121,6 +122,7 @@ describe('AssetAggregate', () => {
     const asset = AssetAggregate.register(validInput);
 
     expect(asset.id).toBe('asset-1');
+    expect(asset.siteId).toBe('site-1');
     expect(asset.name).toBe('Bomba principal');
     expect(asset.type).toBe('Bomba');
     expect(asset.manufacturer).toBe('Grundfos');
@@ -133,6 +135,7 @@ describe('AssetAggregate', () => {
   it('registers a valid asset without optional equipment details', () => {
     const asset = AssetAggregate.register({
       assetId: 'asset-1',
+      siteId: 'site-1',
       name: 'Bomba principal',
       type: 'Bomba',
       location: 'Subsuelo',
@@ -148,6 +151,7 @@ describe('AssetAggregate', () => {
     const registered = AssetAggregate.register(validInput);
     const rehydrated = AssetAggregate.rehydrate({
       assetId: registered.id,
+      siteId: registered.siteId,
       name: registered.name,
       type: registered.type,
       manufacturer: registered.manufacturer,
@@ -158,6 +162,7 @@ describe('AssetAggregate', () => {
     });
 
     expect(rehydrated.id).toBe(registered.id);
+    expect(rehydrated.siteId).toBe(registered.siteId);
     expect(rehydrated.name).toBe(registered.name);
     expect(rehydrated.type).toBe(registered.type);
     expect(rehydrated.manufacturer).toBe(registered.manufacturer);
@@ -165,6 +170,15 @@ describe('AssetAggregate', () => {
     expect(rehydrated.serialNumber).toBe(registered.serialNumber);
     expect(rehydrated.location).toBe(registered.location);
     expect(rehydrated.criticality).toBe(registered.criticality);
+  });
+
+  it('rejects registration without site id', () => {
+    expect(() =>
+      AssetAggregate.register({
+        ...validInput,
+        siteId: '   ',
+      }),
+    ).toThrow('Site id is required.');
   });
 
   it('rejects registration without asset id', () => {
@@ -244,6 +258,7 @@ describe('AssetAggregate', () => {
       AssetAggregate.rehydrate({
         ...validInput,
         assetId: '',
+        siteId: validInput.siteId,
         manufacturer: validInput.manufacturer ?? null,
         model: validInput.model ?? null,
         serialNumber: validInput.serialNumber ?? null,

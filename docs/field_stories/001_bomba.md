@@ -2,15 +2,30 @@
 
 ## Contexto
 
-**Site:** Torre B
+**Site:** Torre B (agregado explícito)
 **Turno:** Mañana
 **Actor principal:** Encargado
 
 ---
 
+## Site involucrado
+
+El edificio ya no es implícito: existe como agregado **Site** registrado en el sistema antes de cualquier Asset:
+
+| Atributo | Valor |
+|----------|-------|
+| Nombre | Torre B |
+| Dirección | Av. Corrientes 1234, CABA |
+| Zona horaria | America/Argentina/Buenos_Aires |
+| Tipo de edificio | Residencial |
+
+Todo Asset pertenece obligatoriamente a este Site.
+
+---
+
 ## Asset involucrado
 
-El Incident se detecta sobre un Asset ya registrado en el edificio:
+El Incident se detecta sobre un Asset ya registrado en el Site:
 
 | Atributo | Valor |
 |----------|-------|
@@ -52,7 +67,7 @@ Recibir información clara sobre el Asset afectado antes de llegar al edificio.
 
 ## ¿Qué hizo el sistema?
 
-Verificó que el Asset existía y que había un Shift activo en el Site, detectó el Incident asociado al Asset y al Turno, conservó la Evidence y notificó a la administración.
+Verificó que el Site existía al registrar el Asset, que el Asset existía y que había un Shift activo en el Site, detectó el Incident asociado al Asset y al Turno, conservó la Evidence y notificó a la administración.
 
 ---
 
@@ -63,6 +78,8 @@ La memoria del edificio no puede depender de conversaciones verbales ni de mensa
 El conocimiento operativo debe permanecer disponible aunque cambie el encargado del turno.
 
 Un Incident sin Asset identificado no tiene contexto operativo en el edificio.
+
+Todo Asset pertenece obligatoriamente a un Site existente.
 
 Un Incident solo puede detectarse dentro de un Shift activo del Site.
 

@@ -2,14 +2,29 @@
 
 ## Contexto
 
-**Site:** Torre B
+**Site:** Torre B (agregado explícito)
 **Turno:** Tarde
+
+---
+
+## Site involucrado
+
+El edificio existe como agregado **Site** registrado en el sistema:
+
+| Atributo | Valor |
+|----------|-------|
+| Nombre | Torre B |
+| Dirección | Av. Corrientes 1234, CABA |
+| Zona horaria | America/Argentina/Buenos_Aires |
+| Tipo de edificio | Residencial |
+
+Todo Asset pertenece obligatoriamente a este Site.
 
 ---
 
 ## Asset involucrado
 
-El Incident se detecta sobre un Asset registrado en el edificio:
+El Incident se detecta sobre un Asset registrado en el Site:
 
 | Atributo | Valor |
 |----------|-------|
@@ -51,7 +66,7 @@ Disponer de la información del Asset — ubicación, tipo y criticidad — ante
 
 ## ¿Qué hizo el sistema?
 
-Verificó que el Asset existía y que había un Shift activo en el Site, detectó el Incident sobre **Ascensor A** asociado al Turno y conservó la secuencia completa del Flow desde su detección hasta la resolución.
+Verificó que el Site existía al registrar el Asset, que el Asset existía y que había un Shift activo en el Site, detectó el Incident sobre **Ascensor A** asociado al Turno y conservó la secuencia completa del Flow desde su detección hasta la resolución.
 
 ---
 
@@ -60,6 +75,8 @@ Verificó que el Asset existía y que había un Shift activo en el Site, detect�
 Las transiciones del trabajo deben quedar respaldadas por hechos observables y nunca depender de modificaciones manuales del estado.
 
 Un Incident de criticidad CRITICAL exige un Asset conocido desde la detección.
+
+Todo Asset pertenece obligatoriamente a un Site existente.
 
 Todo Incident queda vinculado al Shift activo en el momento de su detección.
 

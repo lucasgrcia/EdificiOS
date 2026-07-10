@@ -2,13 +2,10 @@ import { AssetAggregate } from '../domain/asset/asset';
 import { AssetRecord } from './asset-persistence';
 import { AssetResult } from './asset-result';
 
-export function toAssetRecord(
-  asset: AssetAggregate,
-  siteId: string,
-): AssetRecord {
+export function toAssetRecord(asset: AssetAggregate): AssetRecord {
   return {
     id: asset.id,
-    siteId,
+    siteId: asset.siteId,
     name: asset.name,
     type: asset.type,
     manufacturer: asset.manufacturer,
@@ -22,6 +19,7 @@ export function toAssetRecord(
 export function toAssetResult(record: AssetRecord): AssetResult {
   const asset = AssetAggregate.rehydrate({
     assetId: record.id,
+    siteId: record.siteId,
     name: record.name,
     type: record.type,
     manufacturer: record.manufacturer,

@@ -2,7 +2,7 @@
 
 Última actualización: 2026-07-10
 
-Sprint 4 finalizado.
+Sprint 5 finalizado.
 
 ---
 
@@ -13,7 +13,7 @@ Sprint 4 finalizado.
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Tests | 178/178 OK |
+| Tests | 215/215 OK |
 | Build | OK |
 
 ---
@@ -64,6 +64,16 @@ Sprint 4 finalizado.
 | PR4 | HTTP Shift | ✔ |
 | PR5 | Integración Shift ↔ Incident | ✔ |
 
+### Sprint 5 — Site
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | Dominio `SiteAggregate` | ✔ |
+| PR2 | Persistencia `sites` | ✔ |
+| PR3 | HTTP Site | ✔ |
+| PR4 | Integración Asset → Site | ✔ |
+| PR5 | Revisión arquitectónica + cierre | ✔ |
+
 ---
 
 ## Funcionalidades implementadas
@@ -79,13 +89,23 @@ Sprint 4 finalizado.
 
 La proyección de Incident incluye `assetId` y `shiftId`.
 
-### Asset
+### Site
 
 | Operación | Endpoint |
 |-----------|----------|
-| Register | `POST /api/v1/operations/assets` |
-| Get by id | `GET /api/v1/operations/assets/:id` |
-| List by site | `GET /api/v1/operations/sites/:siteId/assets` |
+| Register | `POST /api/v1/operations/sites` |
+| Get by id | `GET /api/v1/operations/sites/:id` |
+| List all | `GET /api/v1/operations/sites` |
+
+Regla: todo Asset pertenece obligatoriamente a un Site existente.
+
+### Asset
+
+| Operación | Endpoint | Requisito |
+|-----------|----------|-----------|
+| Register | `POST /api/v1/operations/assets` | Site existente (404 si no existe) |
+| Get by id | `GET /api/v1/operations/assets/:id` | — |
+| List by site | `GET /api/v1/operations/sites/:siteId/assets` | — |
 
 ### Shift
 
@@ -114,7 +134,7 @@ Mime types soportados: `image/jpeg`, `image/png`, `video/mp4`, `audio/mpeg`.
 
 ## Persistencia
 
-PostgreSQL directo (`pg`). Sin ORM.
+PostgreSQL directo (`pg`). Sin ORM. Sin Foreign Keys entre agregados.
 
 | Tabla | Rol |
 |-------|-----|
@@ -123,7 +143,8 @@ PostgreSQL directo (`pg`). Sin ORM.
 | `outbox` | Mensajes pendientes de publicación |
 | `evidences` | Metadata de pruebas físicas |
 | `event_evidences` | Relación hecho ↔ evidencia |
-| `assets` | Activos del edificio |
+| `sites` | Edificios registrados |
+| `assets` | Activos del edificio (`site_id` referencia lógica) |
 | `shifts` | Turnos operativos por Site |
 
 Migraciones en `src/operations/infrastructure/migrations/`.
@@ -133,16 +154,16 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 ## Tests
 
 ```
-17 test suites — 178 tests — 0 fallos
+21 test suites — 215 tests — 0 fallos
 ```
 
 | Área | Archivos |
 |------|----------|
-| Dominio Asset / Shift | `asset.spec.ts`, `shift.spec.ts` |
+| Dominio Site / Asset / Shift | `site.spec.ts`, `asset.spec.ts`, `shift.spec.ts` |
 | Dominio Incident | `incident-aggregate-replay.spec.ts`, `incident-p0-guards.spec.ts` |
 | Dominio Evidence | `evidence.spec.ts` |
-| Casos de uso | `detect-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases` |
-| HTTP | `asset.http`, `shift.http`, `capture-evidence.http` |
+| Casos de uso | `detect-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case` |
+| HTTP | `site.http`, `asset.http`, `shift.http`, `capture-evidence.http` |
 | Repositorios | `postgres-*-repository.integration.spec.ts` |
 | Transacciones | `postgres-operations-transaction-runner.integration.spec.ts` |
 
@@ -155,8 +176,10 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - Monolito modular, bounded context `operations`.
 - Clean Architecture: `domain → application → infrastructure`.
 - DDD táctico: agregados, Value Objects, Domain Events.
-- Transactional Outbox + Event Log como fuente de verdad.
+- Transactional Outbox + Event Log como fuente de verdad (Incident).
+- Site y Asset: persistencia CRUD inmutable (`register` / `rehydrate`).
 - Evidence respalda Domain Events, no Incident (ADR-006).
+- Site es agregado explícito; Asset referencia Site por identidad (ADR-007).
 - Incident requiere Asset + Shift activo del Site del Asset.
 
 Documentación de decisiones: `docs/architecture_decisions/`.
@@ -171,6 +194,7 @@ Documentación de decisiones: `docs/architecture_decisions/`.
 - Event Bus distribuido (RabbitMQ, Redis)
 - Almacenamiento en nube
 - OCR / IA
+- Foreign Keys entre agregados
 
 ---
 
@@ -178,12 +202,15 @@ Documentación de decisiones: `docs/architecture_decisions/`.
 
 ### P1 — deuda técnica conocida
 
+- Unificar `SiteId` duplicado (`domain/site/` vs `domain/shift/`).
+- Validar existencia de Site en `StartShiftUseCase` y `ListAssetsBySiteUseCase`.
 - `storageReference`: evolucionar a `FileStorage.generateReference()`.
 - Validar existencia del Domain Event antes de `associate()`.
 - Incluir `assetId` y `shiftId` en payload de `workflow.flow.detected` para replay completo.
 - Concurrencia optimista en `updateProjection` y `start()` de Shift.
 - Errores HTTP tipados para `Shift is already closed`.
 - Alinear Field Story 006 eventos (`operations.shift.*` vs `shift.continuity.*`).
+- Paginación en `ListSitesUseCase`.
 
 ### Política de almacenamiento
 

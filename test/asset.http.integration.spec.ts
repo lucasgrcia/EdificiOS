@@ -8,7 +8,11 @@ import { AssetResult } from '../src/operations/application/asset-result';
 import { GetAssetByIdUseCase } from '../src/operations/application/get-asset-by-id-use-case';
 import { GetActiveShiftUseCase } from '../src/operations/application/get-active-shift-use-case';
 import { ListAssetsBySiteUseCase } from '../src/operations/application/list-assets-by-site-use-case';
+import { GetSiteByIdUseCase } from '../src/operations/application/get-site-by-id-use-case';
+import { ListSitesUseCase } from '../src/operations/application/list-sites-use-case';
 import { RegisterAssetUseCase } from '../src/operations/application/register-asset-use-case';
+import { RegisterSiteUseCase } from '../src/operations/application/register-site-use-case';
+import { SiteNotFoundError } from '../src/operations/domain/site/site-not-found';
 import { StartShiftUseCase } from '../src/operations/application/start-shift-use-case';
 import { AssetsController } from '../src/operations/infrastructure/http/assets.controller';
 import { RegisterAssetRequestPipe } from '../src/operations/infrastructure/http/register-asset-request.pipe';
@@ -78,6 +82,18 @@ describe('Asset HTTP integration', () => {
         },
         {
           provide: GetActiveShiftUseCase,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: RegisterSiteUseCase,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: GetSiteByIdUseCase,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: ListSitesUseCase,
           useValue: { execute: jest.fn() },
         },
       ],
@@ -174,6 +190,27 @@ describe('Asset HTTP integration', () => {
       expect(response.statusCode).toBe(400);
       expect(response.json().message).toBe('Criticality is not supported.');
       expect(registerAssetUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 when site is not found', async () => {
+      registerAssetUseCase.execute.mockRejectedValueOnce(
+        new SiteNotFoundError(siteId),
+      );
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/v1/operations/assets',
+        payload: {
+          siteId,
+          name: 'Bomba principal',
+          type: 'Bomba',
+          location: 'Subsuelo',
+          criticality: 'HIGH',
+        },
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json().message).toBe('Site was not found.');
     });
   });
 
