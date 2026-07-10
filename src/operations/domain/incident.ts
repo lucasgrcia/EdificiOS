@@ -1,4 +1,5 @@
 import { AssetId } from './asset/value-objects/asset-id';
+import { ShiftId } from './shift/value-objects/shift-id';
 import { IncidentAssigned } from './incident-assigned';
 import { IncidentDetected } from './incident-detected';
 import { IncidentInProgress } from './incident-in-progress';
@@ -20,6 +21,7 @@ export type IncidentInput = {
   incidentId: string;
   flowId: string;
   assetId: AssetId;
+  shiftId: ShiftId;
   description: string;
   detectedAt: Date;
 };
@@ -27,6 +29,7 @@ export type IncidentInput = {
 export type IncidentRehydrateInput = {
   incidentId: string;
   assetId: AssetId;
+  shiftId: ShiftId;
   description: string;
   detectedAt: Date;
   status: IncidentStatus;
@@ -57,6 +60,7 @@ export class IncidentAggregate {
     private readonly incidentDetectedAt: Date,
     private status: IncidentStatus,
     private readonly incidentAssetId: AssetId | null,
+    private readonly incidentShiftId: ShiftId | null,
   ) {}
 
   static detect(input: IncidentInput): IncidentAggregate {
@@ -78,6 +82,7 @@ export class IncidentAggregate {
       new Date(input.detectedAt),
       'DETECTED',
       input.assetId,
+      input.shiftId,
     );
 
     incident.recordFlowDetected(input.flowId);
@@ -100,6 +105,7 @@ export class IncidentAggregate {
       new Date(input.detectedAt),
       input.status,
       input.assetId,
+      input.shiftId,
     );
   }
 
@@ -119,6 +125,7 @@ export class IncidentAggregate {
       first.description,
       new Date(first.detectedAt),
       'DETECTED',
+      null,
       null,
     );
 
@@ -147,6 +154,10 @@ export class IncidentAggregate {
 
   get assetId(): string | null {
     return this.incidentAssetId?.toString() ?? null;
+  }
+
+  get shiftId(): string | null {
+    return this.incidentShiftId?.toString() ?? null;
   }
 
   assign(input: AssignIncidentInput): void {

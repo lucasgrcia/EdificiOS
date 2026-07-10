@@ -1,5 +1,6 @@
 import {
   Body,
+  ConflictException,
   Controller,
   HttpCode,
   HttpStatus,
@@ -14,6 +15,8 @@ import { IncidentTransitionResult } from '../../application/incident-persistence
 import { ResolveIncidentUseCase } from '../../application/resolve-incident-use-case';
 import { StartIncidentUseCase } from '../../application/start-incident-use-case';
 import { AssetNotFoundError } from '../../domain/asset/asset-not-found';
+import { MultipleActiveShiftsError } from '../../domain/shift/multiple-active-shifts';
+import { NoActiveShiftError } from '../../domain/shift/no-active-shift';
 import { AssignIncidentRequestDto } from './assign-incident.dto';
 import { AssignIncidentRequestPipe } from './assign-incident-request.pipe';
 import { DetectIncidentRequestDto } from './detect-incident.dto';
@@ -41,6 +44,14 @@ export class IncidentsController {
     } catch (error) {
       if (error instanceof AssetNotFoundError) {
         throw new NotFoundException(error.message);
+      }
+
+      if (error instanceof NoActiveShiftError) {
+        throw new ConflictException(error.message);
+      }
+
+      if (error instanceof MultipleActiveShiftsError) {
+        throw new ConflictException(error.message);
       }
 
       throw error;

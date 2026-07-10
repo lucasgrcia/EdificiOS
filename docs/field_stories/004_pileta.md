@@ -47,7 +47,7 @@ Conocer que la piscina — a través de su Asset de tratamiento — requiere int
 
 ## ¿Qué hizo el sistema?
 
-Registró la inspección y detectó automáticamente que los valores requieren atención sobre el Asset involucrado.
+Registró la inspección y detectó automáticamente que los valores requieren atención sobre el Asset involucrado, dentro del Shift activo del Site.
 
 ---
 

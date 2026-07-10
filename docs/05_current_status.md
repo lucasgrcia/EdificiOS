@@ -1,8 +1,8 @@
 # Estado actual del proyecto
 
-Última actualización: 2026-07-09
+Última actualización: 2026-07-10
 
-Sprint 2 finalizado.
+Sprint 4 finalizado.
 
 ---
 
@@ -13,7 +13,7 @@ Sprint 2 finalizado.
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Tests | 66/66 OK |
+| Tests | 178/178 OK |
 | Build | OK |
 
 ---
@@ -45,18 +45,57 @@ Sprint 2 finalizado.
 | PR4 | `CaptureEvidenceUseCase` | ✔ |
 | PR5 | HTTP multipart capture evidence | ✔ |
 
+### Sprint 3 — Asset
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | Dominio `AssetAggregate` | ✔ |
+| PR2 | Persistencia `assets` | ✔ |
+| PR3 | HTTP Asset | ✔ |
+| PR4 | Integración Incident → Asset | ✔ |
+
+### Sprint 4 — Shift
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | Dominio `ShiftAggregate` | ✔ |
+| PR2 | Persistencia `shifts` | ✔ |
+| PR3 | Application (start, close, get active) | ✔ |
+| PR4 | HTTP Shift | ✔ |
+| PR5 | Integración Shift ↔ Incident | ✔ |
+
 ---
 
 ## Funcionalidades implementadas
 
 ### Incident
 
-| Operación | Endpoint | Domain Event |
-|-----------|----------|--------------|
-| Detect | `POST /api/v1/operations/incidents` | `workflow.flow.detected` |
-| Assign | `POST /api/v1/operations/incidents/:id/assign` | `workflow.flow.assigned` |
-| Start | `POST /api/v1/operations/incidents/:id/start` | `workflow.flow.execution_started` |
-| Resolve | `POST /api/v1/operations/incidents/:id/resolve` | `workflow.flow.resolved` |
+| Operación | Endpoint | Requisito |
+|-----------|----------|-----------|
+| Detect | `POST /api/v1/operations/incidents` | Asset existente + Shift activo del Site |
+| Assign | `POST /api/v1/operations/incidents/:id/assign` | — |
+| Start | `POST /api/v1/operations/incidents/:id/start` | — |
+| Resolve | `POST /api/v1/operations/incidents/:id/resolve` | — |
+
+La proyección de Incident incluye `assetId` y `shiftId`.
+
+### Asset
+
+| Operación | Endpoint |
+|-----------|----------|
+| Register | `POST /api/v1/operations/assets` |
+| Get by id | `GET /api/v1/operations/assets/:id` |
+| List by site | `GET /api/v1/operations/sites/:siteId/assets` |
+
+### Shift
+
+| Operación | Endpoint |
+|-----------|----------|
+| Start | `POST /api/v1/operations/sites/:siteId/shifts/start` |
+| Close | `POST /api/v1/operations/shifts/:shiftId/close` |
+| Get active | `GET /api/v1/operations/sites/:siteId/shifts/active` |
+
+Regla: un solo Shift `OPEN` por Site.
 
 ### Evidence
 
@@ -79,11 +118,13 @@ PostgreSQL directo (`pg`). Sin ORM.
 
 | Tabla | Rol |
 |-------|-----|
-| `incidents` | Proyección del agregado Incident |
+| `incidents` | Proyección del agregado Incident (`assetId`, `shiftId` en jsonb) |
 | `events` | Event Log append-only |
 | `outbox` | Mensajes pendientes de publicación |
 | `evidences` | Metadata de pruebas físicas |
 | `event_evidences` | Relación hecho ↔ evidencia |
+| `assets` | Activos del edificio |
+| `shifts` | Turnos operativos por Site |
 
 Migraciones en `src/operations/infrastructure/migrations/`.
 
@@ -92,15 +133,16 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 ## Tests
 
 ```
-10 test suites — 66 tests — 0 fallos
+17 test suites — 178 tests — 0 fallos
 ```
 
 | Área | Archivos |
 |------|----------|
-| Dominio Evidence | `evidence.spec.ts` |
+| Dominio Asset / Shift | `asset.spec.ts`, `shift.spec.ts` |
 | Dominio Incident | `incident-aggregate-replay.spec.ts`, `incident-p0-guards.spec.ts` |
-| Casos de uso | `detect-incident`, `incident-lifecycle`, `capture-evidence` |
-| HTTP | `capture-evidence.http.integration.spec.ts` |
+| Dominio Evidence | `evidence.spec.ts` |
+| Casos de uso | `detect-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases` |
+| HTTP | `asset.http`, `shift.http`, `capture-evidence.http` |
 | Repositorios | `postgres-*-repository.integration.spec.ts` |
 | Transacciones | `postgres-operations-transaction-runner.integration.spec.ts` |
 
@@ -115,6 +157,7 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - DDD táctico: agregados, Value Objects, Domain Events.
 - Transactional Outbox + Event Log como fuente de verdad.
 - Evidence respalda Domain Events, no Incident (ADR-006).
+- Incident requiere Asset + Shift activo del Site del Asset.
 
 Documentación de decisiones: `docs/architecture_decisions/`.
 
@@ -131,16 +174,16 @@ Documentación de decisiones: `docs/architecture_decisions/`.
 
 ---
 
-## Backlog inmediato (Sprint 3)
+## Backlog inmediato
 
 ### P1 — deuda técnica conocida
 
-- `storageReference`: hoy lo genera la capa HTTP; evolucionar a `FileStorage.generateReference()` para que infraestructura asigne rutas.
+- `storageReference`: evolucionar a `FileStorage.generateReference()`.
 - Validar existencia del Domain Event antes de `associate()`.
-- Errores HTTP tipados (404 / 409) para reglas de negocio.
-- Concurrencia optimista en `updateProjection`.
-- Proyección derivada del dominio o del evento emitido.
-- Definir explícitamente Flow vs Incident en glosario.
+- Incluir `assetId` y `shiftId` en payload de `workflow.flow.detected` para replay completo.
+- Concurrencia optimista en `updateProjection` y `start()` de Shift.
+- Errores HTTP tipados para `Shift is already closed`.
+- Alinear Field Story 006 eventos (`operations.shift.*` vs `shift.continuity.*`).
 
 ### Política de almacenamiento
 

@@ -6,8 +6,10 @@ import { Test } from '@nestjs/testing';
 
 import { AssetResult } from '../src/operations/application/asset-result';
 import { GetAssetByIdUseCase } from '../src/operations/application/get-asset-by-id-use-case';
+import { GetActiveShiftUseCase } from '../src/operations/application/get-active-shift-use-case';
 import { ListAssetsBySiteUseCase } from '../src/operations/application/list-assets-by-site-use-case';
 import { RegisterAssetUseCase } from '../src/operations/application/register-asset-use-case';
+import { StartShiftUseCase } from '../src/operations/application/start-shift-use-case';
 import { AssetsController } from '../src/operations/infrastructure/http/assets.controller';
 import { RegisterAssetRequestPipe } from '../src/operations/infrastructure/http/register-asset-request.pipe';
 import { SitesController } from '../src/operations/infrastructure/http/sites.controller';
@@ -69,6 +71,14 @@ describe('Asset HTTP integration', () => {
         {
           provide: ListAssetsBySiteUseCase,
           useValue: listAssetsBySiteUseCase,
+        },
+        {
+          provide: StartShiftUseCase,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: GetActiveShiftUseCase,
+          useValue: { execute: jest.fn() },
         },
       ],
     }).compile();

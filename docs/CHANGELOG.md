@@ -6,6 +6,45 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.4.0-alpha] - 2026-07-10
+
+### Added
+
+#### Sprint 4 — Shift
+
+- Agregado `ShiftAggregate` con ciclo `OPEN → CLOSED`.
+- Domain Events: `shift.continuity.started`, `shift.continuity.closed`.
+- Persistencia `shifts` (migración `005_shifts.sql`).
+- Casos de uso: `StartShiftUseCase`, `CloseShiftUseCase`, `GetActiveShiftUseCase`.
+- Endpoints HTTP de Shift.
+- Regla: un solo Shift activo por Site.
+
+#### Sprint 4 — Integración Shift ↔ Incident
+
+- `DetectIncidentUseCase` exige Shift activo del Site del Asset.
+- Incident asociado a `shiftId` en proyección.
+- Errores de dominio: `NoActiveShiftError`, rechazo sin turno activo.
+
+### Changed
+
+- `DetectIncidentUseCase` resuelve Site desde el Asset y valida continuidad operativa.
+- Field Stories 001, 004, 005 y 006 actualizadas con Shift activo.
+
+---
+
+## [0.3.0-alpha] - 2026-07-09
+
+### Added
+
+#### Sprint 3 — Asset
+
+- Agregado `AssetAggregate` inmutable.
+- Persistencia `assets` (migración `004_assets.sql`).
+- Endpoints HTTP de Asset.
+- Integración Incident → Asset: detección exige Asset existente.
+
+---
+
 ## [0.2.0-alpha] - 2026-07-09
 
 ### Added

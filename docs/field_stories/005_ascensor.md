@@ -51,7 +51,7 @@ Disponer de la información del Asset — ubicación, tipo y criticidad — ante
 
 ## ¿Qué hizo el sistema?
 
-Verificó que el Asset existía, detectó el Incident sobre **Ascensor A** y conservó la secuencia completa del Flow desde su detección hasta la resolución.
+Verificó que el Asset existía y que había un Shift activo en el Site, detectó el Incident sobre **Ascensor A** asociado al Turno y conservó la secuencia completa del Flow desde su detección hasta la resolución.
 
 ---
 
@@ -60,6 +60,8 @@ Verificó que el Asset existía, detectó el Incident sobre **Ascensor A** y con
 Las transiciones del trabajo deben quedar respaldadas por hechos observables y nunca depender de modificaciones manuales del estado.
 
 Un Incident de criticidad CRITICAL exige un Asset conocido desde la detección.
+
+Todo Incident queda vinculado al Shift activo en el momento de su detección.
 
 ---
 

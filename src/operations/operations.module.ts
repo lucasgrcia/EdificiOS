@@ -12,6 +12,9 @@ import { TransactionRunner } from './application/incident-persistence';
 import { ListAssetsBySiteUseCase } from './application/list-assets-by-site-use-case';
 import { RegisterAssetUseCase } from './application/register-asset-use-case';
 import { ResolveIncidentUseCase } from './application/resolve-incident-use-case';
+import { CloseShiftUseCase } from './application/close-shift-use-case';
+import { GetActiveShiftUseCase } from './application/get-active-shift-use-case';
+import { StartShiftUseCase } from './application/start-shift-use-case';
 import { StartIncidentUseCase } from './application/start-incident-use-case';
 import { AssignIncidentRequestPipe } from './infrastructure/http/assign-incident-request.pipe';
 import { AssetsController } from './infrastructure/http/assets.controller';
@@ -20,13 +23,16 @@ import { DetectIncidentRequestPipe } from './infrastructure/http/detect-incident
 import { EventsController } from './infrastructure/http/events.controller';
 import { IncidentsController } from './infrastructure/http/incidents.controller';
 import { RegisterAssetRequestPipe } from './infrastructure/http/register-asset-request.pipe';
+import { ShiftsController } from './infrastructure/http/shifts.controller';
 import { SitesController } from './infrastructure/http/sites.controller';
+import { StartShiftRequestPipe } from './infrastructure/http/start-shift-request.pipe';
 import { LocalFileStorage } from './infrastructure/file-storage/local-file-storage';
 import { PostgresAssetRepository } from './infrastructure/persistence/postgres-asset-repository';
 import { PostgresEventEvidenceRepository } from './infrastructure/persistence/postgres-event-evidence-repository';
 import { PostgresEvidenceRepository } from './infrastructure/persistence/postgres-evidence-repository';
 import { PostgresOperationsPool } from './infrastructure/persistence/postgres-operations-pool';
 import { PostgresOperationsTransactionRunner } from './infrastructure/persistence/postgres-operations-transaction-runner';
+import { PostgresShiftRepository } from './infrastructure/persistence/postgres-shift-repository';
 
 function createUseCaseDependencies(transactionRunner: TransactionRunner) {
   return {
@@ -46,12 +52,14 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     EventsController,
     AssetsController,
     SitesController,
+    ShiftsController,
   ],
   providers: [
     DetectIncidentRequestPipe,
     AssignIncidentRequestPipe,
     CaptureEvidenceMultipartPipe,
     RegisterAssetRequestPipe,
+    StartShiftRequestPipe,
     PostgresOperationsPool,
     PostgresOperationsTransactionRunner,
     {
@@ -65,6 +73,12 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       inject: [PostgresOperationsPool],
       useFactory: (operationsPool: PostgresOperationsPool) =>
         new PostgresAssetRepository(operationsPool.pool),
+    },
+    {
+      provide: PostgresShiftRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresShiftRepository(operationsPool.pool),
     },
     {
       provide: PostgresEventEvidenceRepository,
@@ -81,14 +95,20 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     },
     {
       provide: DetectIncidentUseCase,
-      inject: [PostgresOperationsTransactionRunner, PostgresAssetRepository],
+      inject: [
+        PostgresOperationsTransactionRunner,
+        PostgresAssetRepository,
+        PostgresShiftRepository,
+      ],
       useFactory: (
         transactionRunner: TransactionRunner,
         assetRepository: PostgresAssetRepository,
+        shiftRepository: PostgresShiftRepository,
       ) =>
         new DetectIncidentUseCase({
           ...createUseCaseDependencies(transactionRunner),
           assetRepository,
+          shiftRepository,
         }),
     },
     {
@@ -159,6 +179,42 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       useFactory: (assetRepository: PostgresAssetRepository) =>
         new ListAssetsBySiteUseCase({
           assetRepository,
+        }),
+    },
+    {
+      provide: StartShiftUseCase,
+      inject: [PostgresShiftRepository],
+      useFactory: (shiftRepository: PostgresShiftRepository) =>
+        new StartShiftUseCase({
+          shiftRepository,
+          idGenerator: {
+            generate: () => randomUUID(),
+          },
+          clock: {
+            now: () => new Date(),
+          },
+        }),
+    },
+    {
+      provide: CloseShiftUseCase,
+      inject: [PostgresShiftRepository],
+      useFactory: (shiftRepository: PostgresShiftRepository) =>
+        new CloseShiftUseCase({
+          shiftRepository,
+          idGenerator: {
+            generate: () => randomUUID(),
+          },
+          clock: {
+            now: () => new Date(),
+          },
+        }),
+    },
+    {
+      provide: GetActiveShiftUseCase,
+      inject: [PostgresShiftRepository],
+      useFactory: (shiftRepository: PostgresShiftRepository) =>
+        new GetActiveShiftUseCase({
+          shiftRepository,
         }),
     },
   ],

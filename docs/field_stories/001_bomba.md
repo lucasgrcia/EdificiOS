@@ -52,7 +52,7 @@ Recibir información clara sobre el Asset afectado antes de llegar al edificio.
 
 ## ¿Qué hizo el sistema?
 
-Verificó que el Asset existía, detectó el Incident sobre ese Asset, conservó la Evidence y notificó a la administración.
+Verificó que el Asset existía y que había un Shift activo en el Site, detectó el Incident asociado al Asset y al Turno, conservó la Evidence y notificó a la administración.
 
 ---
 
@@ -63,6 +63,8 @@ La memoria del edificio no puede depender de conversaciones verbales ni de mensa
 El conocimiento operativo debe permanecer disponible aunque cambie el encargado del turno.
 
 Un Incident sin Asset identificado no tiene contexto operativo en el edificio.
+
+Un Incident solo puede detectarse dentro de un Shift activo del Site.
 
 ---
 

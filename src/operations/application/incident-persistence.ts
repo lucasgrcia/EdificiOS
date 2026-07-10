@@ -9,6 +9,7 @@ export type IncidentProjectionState = {
   description: string;
   detectedAt: string;
   assetId: string;
+  shiftId: string;
   assignedAt?: string;
   assignedActorId?: string;
   startedAt?: string;

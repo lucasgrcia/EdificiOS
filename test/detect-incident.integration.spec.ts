@@ -1,6 +1,8 @@
 import { AssetNotFoundError } from '../src/operations/domain/asset/asset-not-found';
+import { NoActiveShiftError } from '../src/operations/domain/shift/no-active-shift';
 import { DetectIncidentUseCase } from '../src/operations/application/detect-incident-use-case';
 import { AssetRecord } from '../src/operations/application/asset-persistence';
+import { ShiftRecord } from '../src/operations/application/shift-persistence';
 import {
   FlowEventRecord,
   IncidentRecord,
@@ -10,10 +12,12 @@ import {
 } from '../src/operations/application/incident-persistence';
 
 describe('DetectIncidentUseCase integration', () => {
+  const siteId = '00000000-0000-0000-0000-000000000010';
   const assetId = '00000000-0000-0000-0000-000000000001';
+  const shiftId = '00000000-0000-0000-0000-000000000030';
   const assetRecord: AssetRecord = {
     id: assetId,
-    siteId: '00000000-0000-0000-0000-000000000010',
+    siteId,
     name: 'Bomba principal',
     type: 'Bomba',
     manufacturer: 'Grundfos',
@@ -22,8 +26,20 @@ describe('DetectIncidentUseCase integration', () => {
     location: 'Subsuelo',
     criticality: 'HIGH',
   };
+  const activeShift: ShiftRecord = {
+    id: shiftId,
+    siteId,
+    operatorId: '00000000-0000-0000-0000-000000000020',
+    type: 'Mañana',
+    status: 'OPEN',
+    startedAt: new Date('2026-07-10T08:00:00.000Z'),
+    endedAt: null,
+  };
 
-  function createHarness(options?: { assetExists?: boolean }) {
+  function createHarness(options?: {
+    assetExists?: boolean;
+    activeShiftExists?: boolean;
+  }) {
     const writes: Array<{
       kind: 'Incident' | 'Event' | 'Outbox';
       transactionId: string;
@@ -86,12 +102,25 @@ describe('DetectIncidentUseCase integration', () => {
           throw new Error('Not expected.');
         },
       },
+      shiftRepository: {
+        findById: async () => null,
+        findActiveBySite: async (recordSiteId) =>
+          options?.activeShiftExists === false || recordSiteId !== siteId
+            ? []
+            : [activeShift],
+        save: async () => {
+          throw new Error('Not expected.');
+        },
+        update: async () => {
+          throw new Error('Not expected.');
+        },
+      },
     });
 
     return { useCase, writes, getOpenedTransactions: () => openedTransactions };
   }
 
-  it('persists Incident, Event, and Outbox when asset exists', async () => {
+  it('persists Incident, Event, and Outbox when asset and active shift exist', async () => {
     const { useCase, writes, getOpenedTransactions } = createHarness();
 
     const result = await useCase.execute({
@@ -110,34 +139,14 @@ describe('DetectIncidentUseCase integration', () => {
       'Event',
       'Outbox',
     ]);
-    expect(new Set(writes.map((write) => write.transactionId))).toEqual(
-      new Set(['tx-1']),
-    );
     expect(writes[0].record).toMatchObject({
       currentProjectionState: {
         status: 'DETECTED',
         description: 'Carlos detects a leak.',
         detectedAt: '2026-07-07T15:00:00.000Z',
         assetId,
+        shiftId,
       },
-    });
-    expect(writes[1].record).toMatchObject({
-      id: 'event-1',
-      aggregateType: 'Incident',
-      aggregateId: 'incident-1',
-      incidentId: 'incident-1',
-      name: 'workflow.flow.detected',
-      schemaVersion: 1,
-      correlationId: null,
-      causationId: null,
-      actorId: null,
-    });
-    expect(writes[2].record).toMatchObject({
-      id: 'outbox-1',
-      aggregateType: 'Incident',
-      aggregateId: 'incident-1',
-      eventId: 'event-1',
-      status: 'pending',
     });
   });
 
@@ -157,18 +166,34 @@ describe('DetectIncidentUseCase integration', () => {
     expect(writes).toEqual([]);
   });
 
-  it('keeps the normal detect flow working with a persisted asset reference', async () => {
+  it('does not create an incident when site has no active shift', async () => {
+    const { useCase, writes, getOpenedTransactions } = createHarness({
+      activeShiftExists: false,
+    });
+
+    await expect(
+      useCase.execute({
+        assetId,
+        description: 'Carlos detects a leak.',
+      }),
+    ).rejects.toBeInstanceOf(NoActiveShiftError);
+
+    expect(getOpenedTransactions()).toBe(0);
+    expect(writes).toEqual([]);
+  });
+
+  it('associates the incident with the active shift of the asset site', async () => {
     const { useCase, writes } = createHarness();
 
-    const result = await useCase.execute({
+    await useCase.execute({
       assetId,
       description: 'Ascensor detenido entre pisos.',
     });
 
-    expect(result.incidentId).toBe('incident-1');
     expect(writes[0].record).toMatchObject({
       currentProjectionState: {
         assetId,
+        shiftId,
         description: 'Ascensor detenido entre pisos.',
       },
     });

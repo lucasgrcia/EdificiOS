@@ -2,7 +2,7 @@
 
 ## Contexto
 
-**Sitio:** Edificio completo
+**Site:** Edificio completo
 **Cambio:** Turno tarde → Turno noche
 
 ---
@@ -16,6 +16,8 @@ El operador entrante necesita comprender rápidamente qué situaciones continúa
 No existe intercambio mediante cuadernos ni conversaciones informales.
 
 La información permanece disponible dentro del sistema.
+
+Cada Incident detectado durante un Turno queda asociado a ese Shift, preservando la continuidad operativa del edificio.
 
 ---
 
@@ -35,6 +37,8 @@ Comprender el estado operativo del edificio antes de comenzar su recorrida.
 
 Presentó automáticamente los trabajos que continúan activos junto con la evidencia acumulada hasta ese momento.
 
+Rechazó nuevas detecciones de Incident cuando no existía un Shift activo en el Site.
+
 ---
 
 ## ¿Qué aprendimos?
@@ -42,6 +46,8 @@ Presentó automáticamente los trabajos que continúan activos junto con la evid
 La verdadera unidad operativa del edificio es el Turno.
 
 El conocimiento pertenece al edificio, no a las personas.
+
+Sin Shift activo no hay detección de Incident: el operador debe abrir continuidad antes de registrar hechos.
 
 ---
 
@@ -55,8 +61,9 @@ El conocimiento pertenece al edificio, no a las personas.
 
 ## Eventos derivados
 
-- operations.shift.ended
-- operations.shift.started
+- shift.continuity.started
+- shift.continuity.closed
+- workflow.flow.detected
 
 ---
 

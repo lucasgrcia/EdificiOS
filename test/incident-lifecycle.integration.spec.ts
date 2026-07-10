@@ -1,6 +1,7 @@
 import { AssignIncidentUseCase } from '../src/operations/application/assign-incident-use-case';
 import { AssetRecord } from '../src/operations/application/asset-persistence';
 import { DetectIncidentUseCase } from '../src/operations/application/detect-incident-use-case';
+import { ShiftRecord } from '../src/operations/application/shift-persistence';
 import {
   FlowEventRecord,
   IncidentRecord,
@@ -18,6 +19,7 @@ type WriteEntry = {
 };
 
 const ASSET_ID = 'asset-1';
+const SHIFT_ID = 'shift-1';
 const assetRecord: AssetRecord = {
   id: ASSET_ID,
   siteId: 'site-1',
@@ -28,6 +30,15 @@ const assetRecord: AssetRecord = {
   serialNumber: null,
   location: 'Subsuelo',
   criticality: 'HIGH',
+};
+const activeShift: ShiftRecord = {
+  id: SHIFT_ID,
+  siteId: 'site-1',
+  operatorId: 'operator-1',
+  type: 'Mañana',
+  status: 'OPEN',
+  startedAt: new Date('2026-07-10T08:00:00.000Z'),
+  endedAt: null,
 };
 
 function createInMemoryTransaction(
@@ -124,6 +135,17 @@ function createTestHarness() {
         throw new Error('Not expected.');
       },
     },
+    shiftRepository: {
+      findById: async () => null,
+      findActiveBySite: async (recordSiteId: string) =>
+        recordSiteId === 'site-1' ? [activeShift] : [],
+      save: async () => {
+        throw new Error('Not expected.');
+      },
+      update: async () => {
+        throw new Error('Not expected.');
+      },
+    },
   };
 
   return {
@@ -208,6 +230,7 @@ describe('Incident lifecycle integration', () => {
       description: 'Carlos detects a leak.',
       detectedAt: '2026-07-07T15:00:00.000Z',
       assetId: ASSET_ID,
+      shiftId: SHIFT_ID,
       assignedAt: '2026-07-07T15:10:00.000Z',
       assignedActorId: 'actor-1',
       startedAt: '2026-07-07T15:20:00.000Z',
