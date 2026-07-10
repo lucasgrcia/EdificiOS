@@ -106,6 +106,32 @@ OPEN / IN_PROGRESS → CANCELLED
 
 ---
 
+### Notification
+
+Mensaje operativo generado por el sistema para informar a un Actor sobre un evento relevante.
+
+**No usar:** Alert, Message, PushNotification como nombre de dominio.
+
+**Puede originarse por:**
+
+- Incident detectado (automático vía `DetectIncidentUseCase`)
+- WorkOrder creada (futuro)
+- Otros eventos operativos (futuro)
+
+**Importante:** no representa envío real (email, push, websocket). Representa una **intención de notificación persistida** en tabla `notifications`.
+
+**Relación con Actor:** `recipientId` (UUID del Actor destinatario). Notification **no conoce** Incident ni WorkOrder; las integraciones viven en Application.
+
+**Estados:** `PENDING`, `SENT`, `FAILED`, `READ`.
+
+**Canales MVP:** `IN_APP`, `EMAIL`, `PUSH` (canal almacenado; sin delivery real en Sprint 9).
+
+**Tipo:** texto libre (`INCIDENT_DETECTED`, `WORK_ORDER_CREATED`, etc.).
+
+**Persistencia:** tabla `notifications`. Sin Domain Events en el MVP actual.
+
+---
+
 ## Conceptos transversales
 
 ### Flow
@@ -193,6 +219,15 @@ Incident (existente)
               └── CreateWorkOrderUseCase
 ```
 
+Notificación automática al detectar Incident:
+
+```
+DetectIncidentUseCase
+  └── persistencia Incident (Event Log + Proyección + Outbox)
+        └── CreateNotificationUseCase
+              └── recipientId: assignedActorId ?? actorId
+```
+
 ---
 
 ## Términos prohibidos en código y dominio
@@ -223,6 +258,7 @@ Incident (existente)
 | Incident → Shift | Referencia por `ShiftId` | `DetectIncidentUseCase` |
 | Incident → Actor (detección) | Derivado del Shift activo | `DetectIncidentUseCase` |
 | Incident → WorkOrder | Referencia por `incidentId` | `CreateWorkOrderFromIncidentUseCase` → `CreateWorkOrderUseCase` |
+| Incident → Notification | Sin referencia en agregados | `DetectIncidentUseCase` → `CreateNotificationUseCase` |
 | Evidence → Event | Asociación post-captura | `CaptureEvidenceUseCase` / PR3 |
 
 **Regla:** sin Foreign Keys entre agregados. Integridad en Application.

@@ -146,6 +146,11 @@ function createTestHarness() {
         throw new Error('Not expected.');
       },
     },
+    createNotificationUseCase: {
+      execute: jest.fn().mockResolvedValue({
+        notificationId: 'notification-1',
+      }),
+    },
   };
 
   return {

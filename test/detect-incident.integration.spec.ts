@@ -45,6 +45,11 @@ describe('DetectIncidentUseCase integration', () => {
       transactionId: string;
       record: IncidentRecord | FlowEventRecord | OutboxRecord;
     }> = [];
+    const createNotificationUseCase = {
+      execute: jest.fn().mockResolvedValue({
+        notificationId: 'notification-1',
+      }),
+    };
 
     const transactionId = 'tx-1';
     const transaction: Transaction = {
@@ -115,9 +120,15 @@ describe('DetectIncidentUseCase integration', () => {
           throw new Error('Not expected.');
         },
       },
+      createNotificationUseCase,
     });
 
-    return { useCase, writes, getOpenedTransactions: () => openedTransactions };
+    return {
+      useCase,
+      writes,
+      createNotificationUseCase,
+      getOpenedTransactions: () => openedTransactions,
+    };
   }
 
   it('persists Incident, Event, and Outbox when asset and active shift exist', async () => {
@@ -198,6 +209,86 @@ describe('DetectIncidentUseCase integration', () => {
         actorId: activeShift.actorId,
         description: 'Ascensor detenido entre pisos.',
       },
+    });
+  });
+
+  describe('Incident detection notification integration', () => {
+    it('creates a notification when incident detection succeeds', async () => {
+      const { useCase, createNotificationUseCase } = createHarness();
+
+      await useCase.execute({
+        assetId,
+        description: 'Carlos detects a leak.',
+      });
+
+      expect(createNotificationUseCase.execute).toHaveBeenCalledTimes(1);
+    });
+
+    it('creates notification for the detection actor', async () => {
+      const { useCase, createNotificationUseCase } = createHarness();
+
+      await useCase.execute({
+        assetId,
+        description: 'Carlos detects a leak.',
+      });
+
+      expect(createNotificationUseCase.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          recipientId: activeShift.actorId,
+        }),
+      );
+    });
+
+    it('creates notification with type INCIDENT_DETECTED', async () => {
+      const { useCase, createNotificationUseCase } = createHarness();
+
+      await useCase.execute({
+        assetId,
+        description: 'Carlos detects a leak.',
+      });
+
+      expect(createNotificationUseCase.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'INCIDENT_DETECTED',
+        }),
+      );
+    });
+
+    it('creates notification with channel IN_APP', async () => {
+      const { useCase, createNotificationUseCase } = createHarness();
+
+      await useCase.execute({
+        assetId,
+        description: 'Carlos detects a leak.',
+      });
+
+      expect(createNotificationUseCase.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          channel: 'IN_APP',
+        }),
+      );
+    });
+
+    it('does not create a notification when detection fails', async () => {
+      const assetMissingHarness = createHarness({ assetExists: false });
+      const noShiftHarness = createHarness({ activeShiftExists: false });
+
+      await expect(
+        assetMissingHarness.useCase.execute({
+          assetId: '00000000-0000-0000-0000-000000000099',
+          description: 'Carlos detects a leak.',
+        }),
+      ).rejects.toBeInstanceOf(AssetNotFoundError);
+
+      await expect(
+        noShiftHarness.useCase.execute({
+          assetId,
+          description: 'Carlos detects a leak.',
+        }),
+      ).rejects.toBeInstanceOf(NoActiveShiftError);
+
+      expect(assetMissingHarness.createNotificationUseCase.execute).not.toHaveBeenCalled();
+      expect(noShiftHarness.createNotificationUseCase.execute).not.toHaveBeenCalled();
     });
   });
 });

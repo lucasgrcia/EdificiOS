@@ -7,6 +7,11 @@ import { NoActiveShiftError } from '../domain/shift/no-active-shift';
 import { ShiftId } from '../domain/shift/value-objects/shift-id';
 import { AssetRepository } from './asset-persistence';
 import {
+  CreateNotificationCommand,
+  CreateNotificationResult,
+} from './create-notification-use-case';
+import {
+  IncidentProjectionState,
   IncidentTransitionResult,
   OutboxRecord,
   UseCaseDependencies,
@@ -20,9 +25,17 @@ export type DetectIncidentCommand = {
   description: string;
 };
 
+const INCIDENT_DETECTED_NOTIFICATION_TYPE = 'INCIDENT_DETECTED';
+const INCIDENT_DETECTED_NOTIFICATION_CHANNEL = 'IN_APP';
+const INCIDENT_DETECTED_NOTIFICATION_MESSAGE =
+  'Se detectó una nueva incidencia.';
+
 export type DetectIncidentUseCaseDependencies = UseCaseDependencies & {
   assetRepository: AssetRepository;
   shiftRepository: ShiftRepository;
+  createNotificationUseCase: {
+    execute(command: CreateNotificationCommand): Promise<CreateNotificationResult>;
+  };
 };
 
 export class DetectIncidentUseCase {
@@ -55,7 +68,8 @@ export class DetectIncidentUseCase {
     const shiftId = ShiftId.create(activeShifts[0].id);
     const actorId = ActorId.create(activeShifts[0].actorId);
 
-    return this.dependencies.transactionRunner.run(async (transaction) => {
+    const result = await this.dependencies.transactionRunner.run(
+      async (transaction) => {
       const incidentId = this.dependencies.idGenerator.generate();
       const eventId = this.dependencies.idGenerator.generate();
       const outboxId = this.dependencies.idGenerator.generate();
@@ -83,17 +97,19 @@ export class DetectIncidentUseCase {
         createdAt: incident.detectedAt,
       };
 
+      const currentProjectionState: IncidentProjectionState = {
+        status: 'DETECTED',
+        description: incident.description,
+        detectedAt: incident.detectedAt.toISOString(),
+        assetId: assetId.toString(),
+        shiftId: shiftId.toString(),
+        actorId: actorId.toString(),
+      };
+
       await transaction.incidents.save({
         id: incident.id,
         description: incident.description,
-        currentProjectionState: {
-          status: 'DETECTED',
-          description: incident.description,
-          detectedAt: incident.detectedAt.toISOString(),
-          assetId: assetId.toString(),
-          shiftId: shiftId.toString(),
-          actorId: actorId.toString(),
-        },
+        currentProjectionState,
         createdAt: incident.detectedAt,
       });
       await transaction.events.save(flow);
@@ -103,7 +119,24 @@ export class DetectIncidentUseCase {
         incidentId,
         eventId,
         outboxId,
+        recipientId:
+          currentProjectionState.assignedActorId ??
+          currentProjectionState.actorId,
       };
+    },
+    );
+
+    await this.dependencies.createNotificationUseCase.execute({
+      recipientId: result.recipientId,
+      type: INCIDENT_DETECTED_NOTIFICATION_TYPE,
+      channel: INCIDENT_DETECTED_NOTIFICATION_CHANNEL,
+      message: INCIDENT_DETECTED_NOTIFICATION_MESSAGE,
     });
+
+    return {
+      incidentId: result.incidentId,
+      eventId: result.eventId,
+      outboxId: result.outboxId,
+    };
   }
 }

@@ -11,7 +11,7 @@ Este documento es la **fuente canónica** de ítems P1 y P2. `docs/05_current_st
 - No agregar ítems sin justificación vinculada a una review, ADR o Field Story.
 - Al cerrar un ítem, marcarlo como resuelto con sprint y PR.
 
-Última consolidación: 2026-07-10 (post Sprint 6 PR5).
+Última consolidación: 2026-07-10 (post Sprint 9).
 
 ---
 
@@ -245,6 +245,15 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | Almacenamiento local filesystem | `05_current_status.md` | Hasta que una Field Story exija otra cosa. |
 | SHA-256 verifica integridad, no identidad | `05_current_status.md` | Sin deduplicación por hash; dos capturas idénticas son dos Evidence distintas. |
 | Datos legacy con `site_id` huérfano | Sprint 5 Review | Migración `006` después de `004`/`005`. Bootstrap: Site primero. |
+
+### Sprint 9 — Notification (futuro)
+
+| Ítem | Origen | Justificación |
+|------|--------|---------------|
+| Lectura de notifications (GET, list by recipient) | Sprint 9 PR5 | Solo creación y persistencia implementadas; sin queries HTTP |
+| Mark as read | Sprint 9 PR1 | Estado `READ` en dominio sin caso de uso ni transición |
+| Delivery providers (email, push, in-app real) | Sprint 9 PR4/PR5 | Notification es intención persistida; sin envío real |
+| Event Log enriquecido para notificaciones automáticas | Sprint 9 PR4 | Integración post-detección fuera de transacción Incident; sin evento de dominio Notification |
 
 ---
 

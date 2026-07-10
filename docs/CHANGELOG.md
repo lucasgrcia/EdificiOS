@@ -6,6 +6,41 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.9.0-alpha] - 2026-07-10
+
+### Added
+
+#### Sprint 9 — Notification (PR1)
+
+- Agregado `NotificationAggregate` inmutable con estados `PENDING`, `SENT`, `FAILED`, `READ`.
+- Value Objects: `NotificationId`, `NotificationType`, `NotificationStatus`, `NotificationChannel`, `NotificationMessage`, `NotificationRecipient`.
+
+#### Sprint 9 — NotificationRepository (PR2)
+
+- Puerto `NotificationRepository` con `save()`, `findById()`, `findByRecipient()`.
+- Persistencia `notifications` (migración `009_notifications.sql`).
+
+#### Sprint 9 — CreateNotificationUseCase (PR3)
+
+- `CreateNotificationUseCase` para crear y persistir notificaciones.
+
+#### Sprint 9 — Integración Incident → Notification (PR4)
+
+- `DetectIncidentUseCase` crea Notification automáticamente tras detección exitosa (`INCIDENT_DETECTED`, canal `IN_APP`).
+- Resolución de `recipientId` desde proyección (`assignedActorId ?? actorId`); fuera de la transacción Incident.
+
+#### Sprint 9 — HTTP Notification (PR5)
+
+- Endpoint `POST /api/v1/operations/notifications`.
+
+### Changed
+
+- Glosario actualizado con término `Notification`.
+- `docs/05_current_status.md` con Sprint 9 cerrado y estado integrado de todos los módulos.
+- `docs/architecture_backlog.md` con deuda futura de Notification (lectura, mark as read, delivery).
+
+---
+
 ## [0.7.0-alpha] - 2026-07-10
 
 ### Added

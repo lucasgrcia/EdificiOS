@@ -26,6 +26,7 @@ import { CompleteWorkOrderUseCase } from './application/complete-work-order-use-
 import { CancelWorkOrderUseCase } from './application/cancel-work-order-use-case';
 import { CreateWorkOrderUseCase } from './application/create-work-order-use-case';
 import { CreateWorkOrderFromIncidentUseCase } from './application/create-work-order-from-incident-use-case';
+import { CreateNotificationUseCase } from './application/create-notification-use-case';
 import { GetActiveShiftUseCase } from './application/get-active-shift-use-case';
 import { GetSiteByIdUseCase } from './application/get-site-by-id-use-case';
 import { ListSitesUseCase } from './application/list-sites-use-case';
@@ -56,6 +57,8 @@ import { CreateWorkOrderRequestPipe } from './infrastructure/http/create-work-or
 import { CreateWorkOrderFromIncidentRequestPipe } from './infrastructure/http/create-work-order-from-incident-request.pipe';
 import { GetWorkOrderByIdParamsPipe } from './infrastructure/http/get-work-order-by-id-params.pipe';
 import { ListWorkOrdersByIncidentParamsPipe } from './infrastructure/http/list-work-orders-by-incident-params.pipe';
+import { CreateNotificationRequestPipe } from './infrastructure/http/create-notification-request.pipe';
+import { NotificationsController } from './infrastructure/http/notifications.controller';
 import { WorkOrdersController } from './infrastructure/http/work-orders.controller';
 import { LocalFileStorage } from './infrastructure/file-storage/local-file-storage';
 import { PostgresActorRepository } from './infrastructure/persistence/postgres-actor-repository';
@@ -69,6 +72,7 @@ import { PostgresOperationsTransactionRunner } from './infrastructure/persistenc
 import { PostgresShiftRepository } from './infrastructure/persistence/postgres-shift-repository';
 import { PostgresSiteRepository } from './infrastructure/persistence/postgres-site-repository';
 import { PostgresWorkOrderRepository } from './infrastructure/persistence/postgres-work-order-repository';
+import { PostgresNotificationRepository } from './infrastructure/persistence/postgres-notification-repository';
 
 function createUseCaseDependencies(transactionRunner: TransactionRunner) {
   return {
@@ -94,6 +98,7 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     ShiftsController,
     WorkOrdersController,
     IncidentWorkOrdersController,
+    NotificationsController,
   ],
   providers: [
     DetectIncidentRequestPipe,
@@ -110,6 +115,7 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     CreateWorkOrderFromIncidentRequestPipe,
     GetWorkOrderByIdParamsPipe,
     ListWorkOrdersByIncidentParamsPipe,
+    CreateNotificationRequestPipe,
     PostgresOperationsPool,
     PostgresOperationsTransactionRunner,
     {
@@ -147,6 +153,26 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       inject: [PostgresOperationsPool],
       useFactory: (operationsPool: PostgresOperationsPool) =>
         new PostgresWorkOrderRepository(operationsPool.pool),
+    },
+    {
+      provide: PostgresNotificationRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresNotificationRepository(operationsPool.pool),
+    },
+    {
+      provide: CreateNotificationUseCase,
+      inject: [PostgresNotificationRepository],
+      useFactory: (notificationRepository: PostgresNotificationRepository) =>
+        new CreateNotificationUseCase({
+          notificationRepository,
+          idGenerator: {
+            generate: () => randomUUID(),
+          },
+          clock: {
+            now: () => new Date(),
+          },
+        }),
     },
     {
       provide: PostgresEventEvidenceRepository,
@@ -231,16 +257,19 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
         PostgresOperationsTransactionRunner,
         PostgresAssetRepository,
         PostgresShiftRepository,
+        CreateNotificationUseCase,
       ],
       useFactory: (
         transactionRunner: TransactionRunner,
         assetRepository: PostgresAssetRepository,
         shiftRepository: PostgresShiftRepository,
+        createNotificationUseCase: CreateNotificationUseCase,
       ) =>
         new DetectIncidentUseCase({
           ...createUseCaseDependencies(transactionRunner),
           assetRepository,
           shiftRepository,
+          createNotificationUseCase,
         }),
     },
     {
