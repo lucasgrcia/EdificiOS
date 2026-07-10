@@ -14,17 +14,24 @@ import { DetectIncidentUseCase } from './application/detect-incident-use-case';
 import { GetActorByIdUseCase } from './application/get-actor-by-id-use-case';
 import { ListActorsBySiteUseCase } from './application/list-actors-by-site-use-case';
 import { GetAssetByIdUseCase } from './application/get-asset-by-id-use-case';
+import { GetWorkOrderByIdUseCase } from './application/get-work-order-by-id-use-case';
 import { TransactionRunner } from './application/incident-persistence';
 import { ListAssetsBySiteUseCase } from './application/list-assets-by-site-use-case';
+import { ListWorkOrdersByIncidentUseCase } from './application/list-work-orders-by-incident-use-case';
 import { RegisterActorUseCase } from './application/register-actor-use-case';
 import { RegisterAssetUseCase } from './application/register-asset-use-case';
 import { ResolveIncidentUseCase } from './application/resolve-incident-use-case';
 import { CloseShiftUseCase } from './application/close-shift-use-case';
+import { CompleteWorkOrderUseCase } from './application/complete-work-order-use-case';
+import { CancelWorkOrderUseCase } from './application/cancel-work-order-use-case';
+import { CreateWorkOrderUseCase } from './application/create-work-order-use-case';
+import { CreateWorkOrderFromIncidentUseCase } from './application/create-work-order-from-incident-use-case';
 import { GetActiveShiftUseCase } from './application/get-active-shift-use-case';
 import { GetSiteByIdUseCase } from './application/get-site-by-id-use-case';
 import { ListSitesUseCase } from './application/list-sites-use-case';
 import { RegisterSiteUseCase } from './application/register-site-use-case';
 import { StartShiftUseCase } from './application/start-shift-use-case';
+import { StartWorkOrderUseCase } from './application/start-work-order-use-case';
 import { StartIncidentUseCase } from './application/start-incident-use-case';
 import { AssignIncidentRequestPipe } from './infrastructure/http/assign-incident-request.pipe';
 import { ActorsController } from './infrastructure/http/actors.controller';
@@ -38,12 +45,18 @@ import { EventsController } from './infrastructure/http/events.controller';
 import { ListEvidenceByEventParamsPipe } from './infrastructure/http/list-evidence-by-event-params.pipe';
 import { IncidentsController } from './infrastructure/http/incidents.controller';
 import { IncidentQueryController } from './infrastructure/http/incident-query.controller';
+import { IncidentWorkOrdersController } from './infrastructure/http/incident-work-orders.controller';
 import { RegisterActorRequestPipe } from './infrastructure/http/register-actor-request.pipe';
 import { RegisterAssetRequestPipe } from './infrastructure/http/register-asset-request.pipe';
 import { RegisterSiteRequestPipe } from './infrastructure/http/register-site-request.pipe';
 import { ShiftsController } from './infrastructure/http/shifts.controller';
 import { SitesController } from './infrastructure/http/sites.controller';
 import { StartShiftRequestPipe } from './infrastructure/http/start-shift-request.pipe';
+import { CreateWorkOrderRequestPipe } from './infrastructure/http/create-work-order-request.pipe';
+import { CreateWorkOrderFromIncidentRequestPipe } from './infrastructure/http/create-work-order-from-incident-request.pipe';
+import { GetWorkOrderByIdParamsPipe } from './infrastructure/http/get-work-order-by-id-params.pipe';
+import { ListWorkOrdersByIncidentParamsPipe } from './infrastructure/http/list-work-orders-by-incident-params.pipe';
+import { WorkOrdersController } from './infrastructure/http/work-orders.controller';
 import { LocalFileStorage } from './infrastructure/file-storage/local-file-storage';
 import { PostgresActorRepository } from './infrastructure/persistence/postgres-actor-repository';
 import { PostgresAssetRepository } from './infrastructure/persistence/postgres-asset-repository';
@@ -55,6 +68,7 @@ import { PostgresOperationsPool } from './infrastructure/persistence/postgres-op
 import { PostgresOperationsTransactionRunner } from './infrastructure/persistence/postgres-operations-transaction-runner';
 import { PostgresShiftRepository } from './infrastructure/persistence/postgres-shift-repository';
 import { PostgresSiteRepository } from './infrastructure/persistence/postgres-site-repository';
+import { PostgresWorkOrderRepository } from './infrastructure/persistence/postgres-work-order-repository';
 
 function createUseCaseDependencies(transactionRunner: TransactionRunner) {
   return {
@@ -78,6 +92,8 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     AssetsController,
     SitesController,
     ShiftsController,
+    WorkOrdersController,
+    IncidentWorkOrdersController,
   ],
   providers: [
     DetectIncidentRequestPipe,
@@ -90,6 +106,10 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     RegisterActorRequestPipe,
     RegisterSiteRequestPipe,
     StartShiftRequestPipe,
+    CreateWorkOrderRequestPipe,
+    CreateWorkOrderFromIncidentRequestPipe,
+    GetWorkOrderByIdParamsPipe,
+    ListWorkOrdersByIncidentParamsPipe,
     PostgresOperationsPool,
     PostgresOperationsTransactionRunner,
     {
@@ -121,6 +141,12 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       inject: [PostgresOperationsPool],
       useFactory: (operationsPool: PostgresOperationsPool) =>
         new PostgresActorRepository(operationsPool.pool),
+    },
+    {
+      provide: PostgresWorkOrderRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresWorkOrderRepository(operationsPool.pool),
     },
     {
       provide: PostgresEventEvidenceRepository,
@@ -383,6 +409,82 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       useFactory: (actorRepository: PostgresActorRepository) =>
         new ListActorsBySiteUseCase({
           actorRepository,
+        }),
+    },
+    {
+      provide: CreateWorkOrderUseCase,
+      inject: [
+        PostgresWorkOrderRepository,
+        PostgresActorRepository,
+        PostgresIncidentQueryRepository,
+      ],
+      useFactory: (
+        workOrderRepository: PostgresWorkOrderRepository,
+        actorRepository: PostgresActorRepository,
+        incidentQueryRepository: PostgresIncidentQueryRepository,
+      ) =>
+        new CreateWorkOrderUseCase({
+          workOrderRepository,
+          actorRepository,
+          incidentQueryRepository,
+          idGenerator: {
+            generate: () => randomUUID(),
+          },
+          clock: {
+            now: () => new Date(),
+          },
+        }),
+    },
+    {
+      provide: CreateWorkOrderFromIncidentUseCase,
+      inject: [PostgresIncidentQueryRepository, CreateWorkOrderUseCase],
+      useFactory: (
+        incidentQueryRepository: PostgresIncidentQueryRepository,
+        createWorkOrderUseCase: CreateWorkOrderUseCase,
+      ) =>
+        new CreateWorkOrderFromIncidentUseCase({
+          incidentQueryRepository,
+          createWorkOrderUseCase,
+        }),
+    },
+    {
+      provide: StartWorkOrderUseCase,
+      inject: [PostgresWorkOrderRepository],
+      useFactory: (workOrderRepository: PostgresWorkOrderRepository) =>
+        new StartWorkOrderUseCase({
+          workOrderRepository,
+        }),
+    },
+    {
+      provide: CompleteWorkOrderUseCase,
+      inject: [PostgresWorkOrderRepository],
+      useFactory: (workOrderRepository: PostgresWorkOrderRepository) =>
+        new CompleteWorkOrderUseCase({
+          workOrderRepository,
+        }),
+    },
+    {
+      provide: CancelWorkOrderUseCase,
+      inject: [PostgresWorkOrderRepository],
+      useFactory: (workOrderRepository: PostgresWorkOrderRepository) =>
+        new CancelWorkOrderUseCase({
+          workOrderRepository,
+        }),
+    },
+    {
+      provide: GetWorkOrderByIdUseCase,
+      inject: [PostgresWorkOrderRepository],
+      useFactory: (workOrderRepository: PostgresWorkOrderRepository) =>
+        new GetWorkOrderByIdUseCase({
+          workOrderRepository,
+        }),
+    },
+    {
+      provide: ListWorkOrdersByIncidentUseCase,
+      inject: [PostgresWorkOrderRepository],
+      useFactory: (workOrderRepository: PostgresWorkOrderRepository) =>
+        new ListWorkOrdersByIncidentUseCase({
+          workOrderRepository,
         }),
     },
   ],

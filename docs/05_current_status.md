@@ -2,7 +2,7 @@
 
 Última actualización: 2026-07-10
 
-Sprint 6 — PR5 en revisión.
+Sprint 8 — cerrado.
 
 ---
 
@@ -13,7 +13,7 @@ Sprint 6 — PR5 en revisión.
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Tests | 256/256 OK |
+| Tests | 381/381 OK |
 | Build | OK |
 
 ---
@@ -82,7 +82,26 @@ Sprint 6 — PR5 en revisión.
 | PR2 | Persistencia `actors` | ✔ |
 | PR3 | HTTP Actor | ✔ |
 | PR4 | Integración Actor ↔ Shift | ✔ |
-| PR5 | Integración Actor ↔ Incident | En revisión |
+| PR5 | Integración Actor ↔ Incident | ✔ |
+
+### Sprint 7 — Read Models + Dashboard
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | `IncidentQueryRepository`, read models | ✔ |
+| PR2 | HTTP query incidents | ✔ |
+| PR3 | Evidence query por evento | ✔ |
+| PR4 | Operations Dashboard | ✔ |
+
+### Sprint 8 — WorkOrder
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | Dominio `WorkOrderAggregate` | ✔ |
+| PR2 | Persistencia `work_orders` | ✔ |
+| PR3 | Application (create, start, complete, cancel) | ✔ |
+| PR4 | HTTP WorkOrder | ✔ |
+| PR5 | Integración Incident ↔ WorkOrder | ✔ |
 
 ---
 
@@ -101,8 +120,34 @@ El sistema resuelve automáticamente `actorId` desde el Actor del Shift activo. 
 | Assign | `POST /api/v1/operations/incidents/:id/assign` | — |
 | Start | `POST /api/v1/operations/incidents/:id/start` | — |
 | Resolve | `POST /api/v1/operations/incidents/:id/resolve` | — |
+| List | `GET /api/v1/operations/incidents` | — |
+| Get by id | `GET /api/v1/operations/incidents/:id` | — |
 
 La proyección de Incident incluye `assetId`, `shiftId` y `actorId` (Actor del Turno al momento de la detección).
+
+Un Incident puede generar WorkOrders. La relación vive en Application; el agregado Incident no conoce WorkOrder.
+
+### WorkOrder
+
+| Operación | Endpoint | Requisito |
+|-----------|----------|-----------|
+| Create | `POST /api/v1/operations/work-orders` | Incident + Actor existentes; sin otro WorkOrder `OPEN` |
+| Create from Incident | `POST /api/v1/operations/incidents/:incidentId/work-orders` | Incident existente; resuelve `actorId` desde proyección |
+| Get by id | `GET /api/v1/operations/work-orders/:id` | — |
+| List by Incident | `GET /api/v1/operations/incidents/:incidentId/work-orders` | — |
+| Start | `POST /api/v1/operations/work-orders/:id/start` | Estado `OPEN` |
+| Complete | `POST /api/v1/operations/work-orders/:id/complete` | Estado `IN_PROGRESS` |
+| Cancel | `POST /api/v1/operations/work-orders/:id/cancel` | Estado `OPEN` o `IN_PROGRESS` |
+
+Regla: un solo WorkOrder `OPEN` por Incident.
+
+Cadena de integración:
+
+```
+Incident → CreateWorkOrderFromIncidentUseCase → CreateWorkOrderUseCase
+```
+
+Resolución de actor: `assignedActorId ?? actorId` desde la proyección del Incident.
 
 ### Site
 
@@ -145,6 +190,12 @@ Regla: un solo Shift `OPEN` por Site.
 
 Mime types soportados: `image/jpeg`, `image/png`, `video/mp4`, `audio/mpeg`.
 
+### Dashboard
+
+| Operación | Endpoint |
+|-----------|----------|
+| Get dashboard | `GET /api/v1/operations/dashboard` |
+
 ---
 
 ## Persistencia
@@ -161,6 +212,8 @@ PostgreSQL directo (`pg`). Sin ORM. Sin Foreign Keys entre agregados.
 | `sites` | Edificios registrados |
 | `assets` | Activos del edificio (`site_id` referencia lógica) |
 | `shifts` | Turnos operativos por Site |
+| `actors` | Personas operativas por Site |
+| `work_orders` | Órdenes de trabajo (`incident_id`, `actor_id` referencia lógica) |
 
 Migraciones en `src/operations/infrastructure/migrations/`.
 
@@ -169,16 +222,16 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 ## Tests
 
 ```
-24 test suites — 256 tests — 0 fallos
+37 test suites — 381 tests — 0 fallos
 ```
 
 | Área | Archivos |
 |------|----------|
-| Dominio Site / Asset / Shift | `site.spec.ts`, `asset.spec.ts`, `shift.spec.ts` |
+| Dominio Site / Asset / Shift / Actor / WorkOrder | `site.spec.ts`, `asset.spec.ts`, `shift.spec.ts`, `actor.spec.ts`, `work-order.spec.ts` |
 | Dominio Incident | `incident-aggregate-replay.spec.ts`, `incident-p0-guards.spec.ts` |
 | Dominio Evidence | `evidence.spec.ts` |
-| Casos de uso | `detect-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case` |
-| HTTP | `site.http`, `asset.http`, `shift.http`, `capture-evidence.http` |
+| Casos de uso | `detect-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order` |
+| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http` |
 | Repositorios | `postgres-*-repository.integration.spec.ts` |
 | Transacciones | `postgres-operations-transaction-runner.integration.spec.ts` |
 
@@ -193,9 +246,11 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - DDD táctico: agregados, Value Objects, Domain Events.
 - Transactional Outbox + Event Log como fuente de verdad (Incident).
 - Site y Asset: persistencia CRUD inmutable (`register` / `rehydrate`).
+- WorkOrder: agregado independiente; referencia Incident por identidad sin acoplamiento.
 - Evidence respalda Domain Events, no Incident (ADR-006).
 - Site es agregado explícito; Asset referencia Site por identidad (ADR-007).
-- Incident requiere Asset + Shift activo del Site del Asset; el Actor se resuelve desde el Shift.
+- Incident requiere Asset + Shift activo del Site; el Actor se resuelve desde el Shift.
+- Incident puede generar WorkOrders; la integración vive en Application, no en el dominio de Incident.
 
 Documentación de decisiones: `docs/architecture_decisions/`.
 
@@ -212,6 +267,7 @@ Glosario ubicuo: `docs/glossary.md`. Deuda arquitectónica: `docs/architecture_b
 - Almacenamiento en nube
 - OCR / IA
 - Foreign Keys entre agregados
+- Domain Events en WorkOrder (Sprint 8)
 
 ---
 

@@ -87,6 +87,25 @@ Prueba física capturada durante un Turno (foto, video, audio). Entidad inmutabl
 
 ---
 
+### WorkOrder
+
+Orden de trabajo derivada de un Incident. Agregado raíz independiente con ciclo:
+
+```
+OPEN → IN_PROGRESS → COMPLETED
+OPEN / IN_PROGRESS → CANCELLED
+```
+
+**No usar:** Task, Ticket, Job como nombre de dominio.
+
+**Relación con Incident:** por `incidentId` (referencia por identidad). Incident **no conoce** WorkOrder; la integración vive en Application (`CreateWorkOrderFromIncidentUseCase`).
+
+**Regla:** un solo WorkOrder `OPEN` por Incident.
+
+**Estados:** `OPEN`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`.
+
+---
+
 ## Conceptos transversales
 
 ### Flow
@@ -143,7 +162,7 @@ Espacio físico del edificio (piso, unidad, área común). Término del lenguaje
 
 ### Work
 
-Concepto de negocio genérico. **No es una clase del dominio.** El trabajo concreto se modela como Incident, inspección futura, custodia futura, etc.
+Concepto de negocio genérico. **No es una clase del dominio.** El trabajo concreto se modela como Incident, WorkOrder, inspección futura, custodia futura, etc.
 
 ---
 
@@ -163,6 +182,15 @@ Registro previo típico:
 
 ```
 POST Site → POST Asset → POST Actor → POST Shift/start → POST Incident (detect)
+```
+
+Generación de WorkOrder desde Incident:
+
+```
+Incident (existente)
+  └── CreateWorkOrderFromIncidentUseCase
+        └── resuelve actorId (assignedActorId ?? actorId)
+              └── CreateWorkOrderUseCase
 ```
 
 ---
@@ -194,6 +222,7 @@ POST Site → POST Asset → POST Actor → POST Shift/start → POST Incident (
 | Incident → Asset | Referencia por `AssetId` | `DetectIncidentUseCase` |
 | Incident → Shift | Referencia por `ShiftId` | `DetectIncidentUseCase` |
 | Incident → Actor (detección) | Derivado del Shift activo | `DetectIncidentUseCase` |
+| Incident → WorkOrder | Referencia por `incidentId` | `CreateWorkOrderFromIncidentUseCase` → `CreateWorkOrderUseCase` |
 | Evidence → Event | Asociación post-captura | `CaptureEvidenceUseCase` / PR3 |
 
 **Regla:** sin Foreign Keys entre agregados. Integridad en Application.

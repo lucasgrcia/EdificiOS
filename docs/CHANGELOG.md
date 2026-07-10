@@ -6,6 +6,33 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.7.0-alpha] - 2026-07-10
+
+### Added
+
+#### Sprint 8 — WorkOrder
+
+- Agregado `WorkOrderAggregate` inmutable con ciclo `OPEN → IN_PROGRESS → COMPLETED` y cancelación.
+- Value Objects: `WorkOrderId`, `IncidentId`, `WorkOrderStatus`, `WorkOrderDescription`, `CreatedAt`.
+- Persistencia `work_orders` (migración `008_work_orders.sql`).
+- Casos de uso: `CreateWorkOrderUseCase`, `StartWorkOrderUseCase`, `CompleteWorkOrderUseCase`, `CancelWorkOrderUseCase`, `GetWorkOrderByIdUseCase`, `ListWorkOrdersByIncidentUseCase`.
+- Endpoints HTTP de WorkOrder y listado por Incident.
+- Errores de dominio: `WorkOrderNotFoundError`, `OpenWorkOrderAlreadyExistsError`, `IncidentNotFoundError`.
+
+#### Sprint 8 — Integración Incident ↔ WorkOrder (PR5)
+
+- `CreateWorkOrderFromIncidentUseCase`: un Incident puede generar WorkOrders sin acoplar agregados.
+- Resolución de `actorId` desde la proyección del Incident (`assignedActorId ?? actorId`).
+- Endpoint `POST /api/v1/operations/incidents/:incidentId/work-orders` (solo `description` en body).
+- Incident no conoce WorkOrder; la relación vive en Application.
+
+### Changed
+
+- Glosario actualizado con término `WorkOrder` y cadena operativa Incident → WorkOrder.
+- `docs/05_current_status.md` con Sprint 8 cerrado.
+
+---
+
 ## [0.6.0-alpha] - 2026-07-10
 
 ### Added
