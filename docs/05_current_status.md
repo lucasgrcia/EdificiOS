@@ -2,7 +2,7 @@
 
 Última actualización: 2026-07-11
 
-Sprint 11 — cerrado.
+Sprint 12 — cerrado.
 
 ---
 
@@ -13,7 +13,7 @@ Sprint 11 — cerrado.
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Tests | 478/478 OK |
+| Tests | 509/509 OK |
 | Build | OK |
 
 ---
@@ -31,8 +31,8 @@ El sistema posee **ocho agregados/módulos operativos**, todos integrados en el 
 | **Site** | Edificio explícito | Asset, Shift, Actor |
 | **Actor** | Persona operativa | Shift, Incident (resolución en detección) |
 | **WorkOrder** | Orden de trabajo derivada de Incident | Incident (Application) |
-| **Notification** | Mensaje operativo automático a un Actor | Application (post-persistencia); cinco tipos operativos |
-| **Timeline** | Read model cronológico por Incident | `events`, `event_evidences`, `work_orders`, `notifications` |
+| **Notification** | Mensaje operativo + read model de consulta | Commands: `CreateNotificationUseCase`; Queries: `NotificationQueryRepository` |
+| **Timeline** | Read model cronológico por Incident | `events`, `event_evidences`, `work_orders`, `notifications`; enriquecido Sprint 12 |
 
 Cadena operativa completa:
 
@@ -84,6 +84,39 @@ Notification INCIDENT_RESOLVED
 Si falla cualquier validación, transición o persistencia, **no** se genera Notification.
 
 `CreateNotificationUseCase` es el punto único de creación (manual vía HTTP o automática vía integraciones).
+
+---
+
+## Notification Read Model
+
+CQRS ligero: la escritura vive en `NotificationRepository` + `CreateNotificationUseCase`; la lectura en `NotificationQueryRepository` + query use cases. Sin modificar agregados ni Event Log.
+
+```
+Notification (tabla notifications)
+        ↓
+NotificationQueryRepository
+  ├── findById(id)
+  ├── findByRecipient(recipientId)   → orden createdAt DESC
+  └── findRecent(limit)              → dashboard global
+        ↓
+GET /api/v1/operations/notifications/:id
+GET /api/v1/operations/actors/:actorId/notifications
+        ↓
+Dashboard (?actorId=…)  →  notifications: NotificationView[]
+        ↓
+Timeline (GetIncidentTimelineUseCase)
+  → findRecent(100) + filtro INCIDENT_*
+  → entradas type NOTIFICATION en TimelineEntryView
+```
+
+| Capa | Componente | Rol |
+|------|------------|-----|
+| Read model | `NotificationView` | DTO: `id`, `recipientId`, `type`, `channel`, `status`, `message`, `createdAt` |
+| Query | `GetNotificationByIdUseCase` | Delegación a `findById` |
+| Query | `ListNotificationsUseCase` | Delegación a `findByRecipient` |
+| HTTP Query | `NotificationQueryController` | Separado de `NotificationsController` (POST) |
+| Dashboard | `GetOperationsDashboardUseCase` | `notifications` si `actorId` presente; si no → `[]` |
+| Timeline | `GetIncidentTimelineUseCase` | Enriquecimiento con notificaciones `INCIDENT_*` como `NOTIFICATION` |
 
 ---
 
@@ -202,6 +235,16 @@ Si falla cualquier validación, transición o persistencia, **no** se genera Not
 | PR4 | `ResolveIncidentUseCase` → Notification `INCIDENT_RESOLVED` | ✔ |
 | PR5 | Documentación + Architecture Review | ✔ |
 
+### Sprint 12 — Notification Queries (Read Model + HTTP + Dashboard + Timeline)
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | `NotificationView`, `NotificationQueryRepository`, query use cases | ✔ |
+| PR2 | HTTP Query: `GET /notifications/:id`, `GET /actors/:actorId/notifications` | ✔ |
+| PR3 | Dashboard `notifications` por `actorId` | ✔ |
+| PR4 | Timeline enriquecido con entradas `NOTIFICATION` | ✔ |
+| PR5 | Documentación + Architecture Review | ✔ |
+
 ---
 
 ## Funcionalidades implementadas
@@ -262,6 +305,8 @@ Estado: **completo** (dominio, persistencia, application, HTTP, integración Inc
 | Operación | Endpoint | Requisito |
 |-----------|----------|-----------|
 | Create | `POST /api/v1/operations/notifications` | `recipientId`, `type`, `channel`, `message` |
+| Get by id | `GET /api/v1/operations/notifications/:id` | — |
+| List by Actor | `GET /api/v1/operations/actors/:actorId/notifications` | — |
 
 Notificaciones automáticas (sin endpoint adicional); todas vía `CreateNotificationUseCase` post-persistencia:
 
@@ -279,7 +324,7 @@ Canal automático: `IN_APP`.
 
 Estados en dominio: `PENDING`, `SENT`, `FAILED`, `READ`. Sin transiciones ni mark as read.
 
-Estado: **completo** para creación automática del ciclo operativo, persistencia manual HTTP y lectura en dashboard; templates, query API y delivery en backlog.
+Estado: **completo** para creación automática, persistencia, query HTTP, dashboard por Actor y enriquecimiento de Timeline; mark as read, delivery y paginación en backlog.
 
 ### Timeline
 
@@ -287,9 +332,9 @@ Estado: **completo** para creación automática del ciclo operativo, persistenci
 |-----------|----------|---------|
 | Get by Incident | `GET /api/v1/operations/incidents/:incidentId/timeline` | Array `{ timestamp, type, description, actorId }` |
 
-Fuentes: `events`, `event_evidences`, `work_orders`, `notifications`. Orden cronológico ASC. Sin replay.
+Fuentes base: `events`, `event_evidences`, `work_orders`, `notifications` (repositorio). Sprint 12: `GetIncidentTimelineUseCase` añade entradas `NOTIFICATION` desde `findRecent(100)` filtrando tipos `INCIDENT_*`. Orden cronológico ASC. Sin replay.
 
-Estado: **completo** (query model, use case, HTTP, tests).
+Estado: **completo** (query model, use case enriquecido, HTTP, tests).
 
 ### Site
 
@@ -345,10 +390,11 @@ Mime types soportados: `image/jpeg`, `image/png`, `video/mp4`, `audio/mpeg`.
 | Operación | Endpoint |
 |-----------|----------|
 | Get dashboard | `GET /api/v1/operations/dashboard` |
+| Get dashboard por Actor | `GET /api/v1/operations/dashboard?actorId={uuid}` |
 
-Incluye: totales por Site, `openIncidents`, `recentEvents`, `recentIncidents`, `recentWorkOrders`, `recentNotifications` (últimos 10).
+Incluye: totales por Site, `openIncidents`, `recentEvents`, `recentIncidents`, `recentWorkOrders`, `recentNotifications` (últimos 10), `notifications` (del Actor si `actorId` presente; si no → `[]`).
 
-Estado: **operativo** (Sprint 7 + Sprint 10 PR4).
+Estado: **operativo** (Sprint 7 + Sprint 10 PR4 + Sprint 12 PR3).
 
 ---
 
@@ -377,7 +423,7 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 ## Tests
 
 ```
-45 test suites — 478 tests — 0 fallos
+47 test suites — 509 tests — 0 fallos
 ```
 
 | Área | Archivos |
@@ -385,8 +431,8 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 | Dominio Site / Asset / Shift / Actor / WorkOrder / Notification | `site.spec.ts`, `asset.spec.ts`, `shift.spec.ts`, `actor.spec.ts`, `work-order.spec.ts`, `notification.spec.ts` |
 | Dominio Incident | `incident-aggregate-replay.spec.ts`, `incident-p0-guards.spec.ts` |
 | Dominio Evidence | `evidence.spec.ts` |
-| Casos de uso | `detect-incident`, `assign-incident`, `resolve-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order`, `create-notification`, `get-incident-timeline`, `get-operations-dashboard` |
-| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `dashboard.http` |
+| Casos de uso | `detect-incident`, `assign-incident`, `resolve-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order`, `create-notification`, `notification-query`, `get-incident-timeline`, `get-operations-dashboard` |
+| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `notification-query.http`, `dashboard.http` |
 | Repositorios / Query | `postgres-*-repository.integration.spec.ts`, `postgres-incident-timeline-repository.integration.spec.ts` |
 | Transacciones | `postgres-operations-transaction-runner.integration.spec.ts` |
 
@@ -402,8 +448,8 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - Transactional Outbox + Event Log como fuente de verdad (Incident).
 - Site y Asset: persistencia CRUD inmutable (`register` / `rehydrate`).
 - WorkOrder: agregado independiente; referencia Incident por identidad sin acoplamiento.
-- Notification: agregado independiente; intención persistida sin delivery real; cinco integraciones automáticas post-persistencia desde Application vía `CreateNotificationUseCase`.
-- Timeline: read model desde tablas de lectura; sin replay ni proyección Incident.
+- Notification: agregado independiente (commands) + read model `NotificationView` (queries); CQRS ligero sin eventos de dominio.
+- Timeline: read model desde tablas de lectura; enriquecido en use case con entradas `NOTIFICATION` (Sprint 12).
 - Query repositories: `IncidentQuery`, `EvidenceQuery`, `EventQuery`, `WorkOrderQuery`, `NotificationQuery`, `IncidentTimeline`.
 - Evidence respalda Domain Events, no Incident (ADR-006).
 - Site es agregado explícito; Asset referencia Site por identidad (ADR-007).
@@ -414,7 +460,7 @@ Documentación de decisiones: `docs/architecture_decisions/`.
 
 Glosario ubicuo: `docs/glossary.md`. Deuda arquitectónica: `docs/architecture_backlog.md`.
 
-Architecture Review Sprint 11: `docs/architecture_reviews/sprint_11_notifications.md`.
+Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`.
 
 ---
 
@@ -449,6 +495,8 @@ Resumen de ítems P1 activos:
 
 Deuda futura Sprint 10 (Timeline): correlación Notification, historial WorkOrder, paginación.
 
-Deuda futura Sprint 11 (Notifications): templates, canales reales, query API, read model, mark as read.
+Deuda futura Sprint 11 (Notifications): templates, canales reales, mark as read.
 
-Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`. Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`.
+Deuda futura Sprint 12 (Notification Queries): `findRecent(100)` en Timeline sin filtro por Incident, paginación, mark as read.
+
+Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`. Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`.

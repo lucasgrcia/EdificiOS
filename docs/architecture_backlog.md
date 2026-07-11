@@ -246,22 +246,31 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | SHA-256 verifica integridad, no identidad | `05_current_status.md` | Sin deduplicación por hash; dos capturas idénticas son dos Evidence distintas. |
 | Datos legacy con `site_id` huérfano | Sprint 5 Review | Migración `006` después de `004`/`005`. Bootstrap: Site primero. |
 
+### Sprint 12 — Notification Queries (futuro)
+
+| Ítem | Origen | Justificación |
+|------|--------|---------------|
+| Timeline usa `findRecent(100)` sin filtro por Incident | Sprint 12 PR4 | Enriquecimiento filtra solo por tipo `INCIDENT_*`; sin `incident_id` en tabla |
+| Sin filtro de notifications por Incident en query API | Sprint 12 PR2 | Solo `findByRecipient` y `findById`; sin `incidentId` |
+| Paginación en query HTTP y timeline | Sprint 12 PR2/PR4 | Listas completas; `findRecent` con límite fijo 100 en timeline |
+| Mark as read | Sprint 9 PR1 | Estado `READ` en dominio sin caso de uso ni transición |
+| Canales reales (Push/Email) | Sprint 11 PR1–PR4 | Solo `IN_APP` persistido; sin delivery providers |
+| Templates parametrizables | Sprint 11 PR1–PR4 | Mensajes fijos en constantes de cada use case de escritura |
+| `incident_id` en `notifications` | Sprint 10 PR1 | Correlación heurística en repositorio timeline; enriquecimiento use case sin referencia explícita |
+
 ### Sprint 11 — Notification (futuro)
 
 | Ítem | Origen | Justificación |
 |------|--------|---------------|
 | Templates parametrizables para Notification | Sprint 11 PR1–PR4 | Mensajes fijos en constantes de cada use case |
 | Canales futuros (Push/Email reales) | Sprint 11 PR1–PR4 | Solo `IN_APP` persistido; sin delivery providers |
-| Notification Query API | Sprint 9 PR5 | Creación HTTP + dashboard `recentNotifications`; falta `GET` / list by recipient |
-| Notification Read Model | Sprint 10 PR4 | Dashboard usa `findRecent`; sin vista dedicada por Actor |
 | Estado `READ` / mark as read | Sprint 9 PR1 | Dominio define `READ` sin caso de uso ni transición |
-| `incident_id` en `notifications` | Sprint 10 PR1 | Correlación heurística en timeline; sin referencia explícita a Incident |
+| `incident_id` en `notifications` | Sprint 10 PR1 | Correlación heurística; sin referencia explícita a Incident |
 
 ### Sprint 9 — Notification (futuro)
 
 | Ítem | Origen | Justificación |
 |------|--------|---------------|
-| Lectura de notifications (GET, list by recipient) | Sprint 9 PR5 | Creación HTTP + dashboard `recentNotifications`; falta list by recipient |
 | Mark as read | Sprint 9 PR1 | Estado `READ` en dominio sin caso de uso ni transición |
 | Delivery providers (email, push, in-app real) | Sprint 9 PR4/PR5 | Notification es intención persistida; sin envío real |
 | Event Log enriquecido para notificaciones automáticas | Sprint 9 PR4 | Integración post-detección fuera de transacción Incident; sin evento de dominio Notification |
@@ -287,6 +296,8 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | `workflow.flow.resolved` sin Field Story | Sprint 1 cierre | Documentado en field stories y status |
 | Evidence con `IncidentId` obligatorio | Sprint 2 PR1 Review | Evidence independiente de Incident (ADR-006) |
 | `operatorId` en Shift | Sprint 6 PR4 | Reemplazado por `actorId` en dominio y HTTP |
+| Notification Query API (`GET`, list by recipient) | Sprint 12 PR2 | `NotificationQueryController` + query use cases |
+| Notification Read Model por Actor | Sprint 12 PR1/PR3 | `NotificationView`, `findByRecipient`, Dashboard `notifications` |
 
 ---
 

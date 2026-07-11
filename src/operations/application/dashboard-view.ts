@@ -1,6 +1,7 @@
 import { IncidentView } from './incident-view';
 import { EventQueryView } from './event-query-view';
 import { NotificationQueryView } from './notification-query-view';
+import { NotificationView } from './notification-view';
 import { WorkOrderQueryView } from './work-order-query-view';
 
 export type DashboardIncidentCounts = {
@@ -36,4 +37,5 @@ export type DashboardView = {
   recentIncidents: IncidentView[];
   recentWorkOrders: WorkOrderQueryView[];
   recentNotifications: NotificationQueryView[];
+  notifications: NotificationView[];
 };

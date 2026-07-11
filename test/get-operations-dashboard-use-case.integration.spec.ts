@@ -1,7 +1,7 @@
 import { AssetRecord } from '../src/operations/application/asset-persistence';
 import { GetOperationsDashboardUseCase } from '../src/operations/application/get-operations-dashboard-use-case';
-import { IncidentQueryRepository } from '../src/operations/application/incident-query-persistence';
 import { IncidentView } from '../src/operations/application/incident-view';
+import { NotificationView } from '../src/operations/application/notification-view';
 import { ShiftRecord } from '../src/operations/application/shift-persistence';
 import { SiteRecord } from '../src/operations/application/site-persistence';
 
@@ -117,6 +117,24 @@ describe('GetOperationsDashboardUseCase integration', () => {
     message: 'Se detectó una nueva incidencia.',
     createdAt: '2026-07-07T15:00:05.000Z',
   };
+  const actorNotificationOlder: NotificationView = {
+    id: '00000000-0000-0000-0000-000000000601',
+    recipientId: activeShift.actorId,
+    type: 'INCIDENT_DETECTED',
+    channel: 'IN_APP',
+    status: 'PENDING',
+    message: 'Se detectó una nueva incidencia.',
+    createdAt: '2026-07-07T15:00:05.000Z',
+  };
+  const actorNotificationNewer: NotificationView = {
+    id: '00000000-0000-0000-0000-000000000602',
+    recipientId: activeShift.actorId,
+    type: 'INCIDENT_ASSIGNED',
+    channel: 'IN_APP',
+    status: 'SENT',
+    message: 'Se te asignó una incidencia.',
+    createdAt: '2026-07-07T16:00:00.000Z',
+  };
 
   function createUseCase(options?: {
     sites?: SiteRecord[];
@@ -126,6 +144,8 @@ describe('GetOperationsDashboardUseCase integration', () => {
     recentEvents?: typeof recentEvent[];
     recentWorkOrders?: typeof recentWorkOrder[];
     recentNotifications?: typeof recentNotification[];
+    actorNotifications?: NotificationView[];
+    findByRecipient?: jest.Mock;
   }) {
     const sites = options?.sites ?? [siteA, siteB];
     const incidents = options?.incidents ?? [
@@ -178,6 +198,10 @@ describe('GetOperationsDashboardUseCase integration', () => {
         findRecent: async () => options?.recentWorkOrders ?? [recentWorkOrder],
       },
       notificationQueryRepository: {
+        findById: async () => null,
+        findByRecipient:
+          options?.findByRecipient ??
+          jest.fn(async () => options?.actorNotifications ?? []),
         findRecent: async () =>
           options?.recentNotifications ?? [recentNotification],
       },
@@ -243,6 +267,7 @@ describe('GetOperationsDashboardUseCase integration', () => {
     ]);
     expect(result.recentWorkOrders).toEqual([recentWorkOrder]);
     expect(result.recentNotifications).toEqual([recentNotification]);
+    expect(result.notifications).toEqual([]);
   });
 
   it('returns empty summaries when there are no sites', async () => {
@@ -263,5 +288,60 @@ describe('GetOperationsDashboardUseCase integration', () => {
     expect(result.recentIncidents).toEqual([]);
     expect(result.recentWorkOrders).toEqual([]);
     expect(result.recentNotifications).toEqual([]);
+    expect(result.notifications).toEqual([]);
+  });
+
+  it('returns actor notifications when actorId is provided', async () => {
+    const actorNotifications = [actorNotificationNewer, actorNotificationOlder];
+    const findByRecipient = jest.fn(async () => actorNotifications);
+    const useCase = createUseCase({
+      actorNotifications,
+      findByRecipient,
+    });
+
+    const result = await useCase.execute({ actorId: activeShift.actorId });
+
+    expect(findByRecipient).toHaveBeenCalledWith(activeShift.actorId);
+    expect(result.notifications).toEqual(actorNotifications);
+  });
+
+  it('returns actor notifications ordered by createdAt desc', async () => {
+    const useCase = createUseCase({
+      actorNotifications: [actorNotificationNewer, actorNotificationOlder],
+    });
+
+    const result = await useCase.execute({ actorId: activeShift.actorId });
+
+    expect(result.notifications).toEqual([
+      actorNotificationNewer,
+      actorNotificationOlder,
+    ]);
+    expect(
+      new Date(result.notifications[0].createdAt).getTime(),
+    ).toBeGreaterThan(new Date(result.notifications[1].createdAt).getTime());
+  });
+
+  it('returns an empty notifications list when actor has no notifications', async () => {
+    const findByRecipient = jest.fn(async () => []);
+    const useCase = createUseCase({ findByRecipient });
+
+    const result = await useCase.execute({
+      actorId: '00000000-0000-0000-0000-000000000099',
+    });
+
+    expect(findByRecipient).toHaveBeenCalledWith(
+      '00000000-0000-0000-0000-000000000099',
+    );
+    expect(result.notifications).toEqual([]);
+  });
+
+  it('returns an empty notifications list when actorId is not provided', async () => {
+    const findByRecipient = jest.fn(async () => [actorNotificationNewer]);
+    const useCase = createUseCase({ findByRecipient });
+
+    const result = await useCase.execute();
+
+    expect(findByRecipient).not.toHaveBeenCalled();
+    expect(result.notifications).toEqual([]);
   });
 });

@@ -6,6 +6,7 @@ import { Test } from '@nestjs/testing';
 
 import { DashboardView } from '../src/operations/application/dashboard-view';
 import { GetOperationsDashboardUseCase } from '../src/operations/application/get-operations-dashboard-use-case';
+import { NotificationView } from '../src/operations/application/notification-view';
 import { DashboardController } from '../src/operations/infrastructure/http/dashboard.controller';
 
 describe('Dashboard HTTP integration', () => {
@@ -81,7 +82,29 @@ describe('Dashboard HTTP integration', () => {
     ],
     recentWorkOrders: [],
     recentNotifications: [],
+    notifications: [],
   };
+  const actorId = '00000000-0000-0000-0000-000000000040';
+  const actorNotifications: NotificationView[] = [
+    {
+      id: '00000000-0000-0000-0000-000000000602',
+      recipientId: actorId,
+      type: 'INCIDENT_ASSIGNED',
+      channel: 'IN_APP',
+      status: 'SENT',
+      message: 'Se te asignó una incidencia.',
+      createdAt: '2026-07-07T16:00:00.000Z',
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000601',
+      recipientId: actorId,
+      type: 'INCIDENT_DETECTED',
+      channel: 'IN_APP',
+      status: 'PENDING',
+      message: 'Se detectó una nueva incidencia.',
+      createdAt: '2026-07-07T15:00:05.000Z',
+    },
+  ];
 
   let app: NestFastifyApplication;
   let getOperationsDashboardUseCase: { execute: jest.Mock };
@@ -140,6 +163,7 @@ describe('Dashboard HTTP integration', () => {
         recentIncidents: [],
         recentWorkOrders: [],
         recentNotifications: [],
+        notifications: [],
       };
       getOperationsDashboardUseCase.execute.mockResolvedValueOnce(emptyDashboard);
 
@@ -150,6 +174,85 @@ describe('Dashboard HTTP integration', () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual(emptyDashboard);
+    });
+
+    it('returns actor notifications when actorId is provided', async () => {
+      const dashboardWithNotifications: DashboardView = {
+        ...dashboard,
+        notifications: actorNotifications,
+      };
+      getOperationsDashboardUseCase.execute.mockResolvedValueOnce(
+        dashboardWithNotifications,
+      );
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/operations/dashboard',
+        query: {
+          actorId,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().notifications).toEqual(actorNotifications);
+      expect(getOperationsDashboardUseCase.execute).toHaveBeenCalledWith({
+        actorId,
+      });
+    });
+
+    it('returns actor notifications ordered by createdAt desc', async () => {
+      const dashboardWithNotifications: DashboardView = {
+        ...dashboard,
+        notifications: actorNotifications,
+      };
+      getOperationsDashboardUseCase.execute.mockResolvedValueOnce(
+        dashboardWithNotifications,
+      );
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/operations/dashboard',
+        query: {
+          actorId,
+        },
+      });
+
+      const notifications = response.json().notifications as Array<{
+        createdAt: string;
+      }>;
+
+      expect(
+        new Date(notifications[0].createdAt).getTime(),
+      ).toBeGreaterThan(new Date(notifications[1].createdAt).getTime());
+    });
+
+    it('returns an empty notifications list when actor has no notifications', async () => {
+      getOperationsDashboardUseCase.execute.mockResolvedValueOnce({
+        ...dashboard,
+        notifications: [],
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/operations/dashboard',
+        query: {
+          actorId,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().notifications).toEqual([]);
+    });
+
+    it('returns an empty notifications list when actorId is not provided', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/operations/dashboard',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().notifications).toEqual([]);
+      expect(getOperationsDashboardUseCase.execute).toHaveBeenCalledWith();
     });
   });
 });

@@ -16,6 +16,10 @@ import { WorkOrderQueryRepository } from './work-order-query-persistence';
 
 const DASHBOARD_RECENT_LIMIT = 10;
 
+export type GetOperationsDashboardCommand = {
+  actorId?: string;
+};
+
 export type GetOperationsDashboardUseCaseDependencies = {
   siteRepository: SiteRepository;
   assetRepository: AssetRepository;
@@ -32,21 +36,36 @@ export class GetOperationsDashboardUseCase {
     private readonly dependencies: GetOperationsDashboardUseCaseDependencies,
   ) {}
 
-  async execute(): Promise<DashboardView> {
-    const [sites, incidents, recentEvents, recentWorkOrders, recentNotifications] =
-      await Promise.all([
-        this.dependencies.siteRepository.findAll(),
-        this.dependencies.incidentQueryRepository.findAll({}),
-        this.dependencies.eventQueryRepository.findRecent(
-          DASHBOARD_RECENT_LIMIT,
-        ),
-        this.dependencies.workOrderQueryRepository.findRecent(
-          DASHBOARD_RECENT_LIMIT,
-        ),
-        this.dependencies.notificationQueryRepository.findRecent(
-          DASHBOARD_RECENT_LIMIT,
-        ),
-      ]);
+  async execute(
+    command?: GetOperationsDashboardCommand,
+  ): Promise<DashboardView> {
+    const actorId = command?.actorId?.trim();
+    const notificationsPromise =
+      actorId !== undefined && actorId.length > 0
+        ? this.dependencies.notificationQueryRepository.findByRecipient(actorId)
+        : Promise.resolve([]);
+
+    const [
+      sites,
+      incidents,
+      recentEvents,
+      recentWorkOrders,
+      recentNotifications,
+      notifications,
+    ] = await Promise.all([
+      this.dependencies.siteRepository.findAll(),
+      this.dependencies.incidentQueryRepository.findAll({}),
+      this.dependencies.eventQueryRepository.findRecent(
+        DASHBOARD_RECENT_LIMIT,
+      ),
+      this.dependencies.workOrderQueryRepository.findRecent(
+        DASHBOARD_RECENT_LIMIT,
+      ),
+      this.dependencies.notificationQueryRepository.findRecent(
+        DASHBOARD_RECENT_LIMIT,
+      ),
+      notificationsPromise,
+    ]);
 
     const siteSummaries: DashboardSiteSummary[] = [];
 
@@ -98,6 +117,7 @@ export class GetOperationsDashboardUseCase {
       recentIncidents,
       recentWorkOrders,
       recentNotifications,
+      notifications,
     };
   }
 }

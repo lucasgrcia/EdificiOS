@@ -6,6 +6,47 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.12.0-alpha] - 2026-07-11
+
+### Added
+
+#### Sprint 12 — Notification Read Model (PR1)
+
+- `NotificationView`, `NotificationQueryRepository` (`findById`, `findByRecipient`, `findRecent`).
+- Mapper `NotificationRecord` / fila SQL → `NotificationView`.
+- `GetNotificationByIdUseCase`, `ListNotificationsUseCase` (delegación pura al query repository).
+
+#### Sprint 12 — HTTP Query API (PR2)
+
+- `NotificationQueryController` independiente de `NotificationsController` (Commands / Queries).
+- `GET /api/v1/operations/notifications/:id` → `NotificationView` (404 si no existe).
+- `GET /api/v1/operations/actors/:actorId/notifications` → `NotificationView[]` (orden `createdAt` DESC).
+
+#### Sprint 12 — Dashboard por Actor (PR3)
+
+- `DashboardView.notifications`: notificaciones del Actor consultado vía `findByRecipient()`.
+- `GET /api/v1/operations/dashboard?actorId={uuid}` carga `notifications`; sin `actorId` → `[]`.
+
+#### Sprint 12 — Timeline enriquecido (PR4)
+
+- `GetIncidentTimelineUseCase` integra `NotificationQueryRepository.findRecent(100)`.
+- Entradas adicionales tipo `NOTIFICATION` para `INCIDENT_DETECTED`, `INCIDENT_ASSIGNED`, `INCIDENT_RESOLVED`.
+- Merge cronológico ASC con timeline existente; mismo DTO `TimelineEntryView`.
+
+#### Sprint 12 — Documentación y cierre (PR5)
+
+- Sección **Notification Read Model** en `docs/05_current_status.md`.
+- Glosario ampliado: Notification vs Timeline Entry vs Event Log.
+- `docs/architecture_reviews/sprint_12_notification_queries.md` (Architecture Review).
+
+### Changed
+
+- CQRS ligero consolidado: escritura (`NotificationRepository` + `CreateNotificationUseCase`) separada de lectura (`NotificationQueryRepository` + query use cases).
+- Dashboard, Timeline y HTTP Query reutilizan el mismo `NotificationQueryRepository` sin SQL nuevo.
+- `docs/architecture_backlog.md` actualizado; ítems resueltos de Sprint 11 (query API, read model por Actor).
+
+---
+
 ## [0.11.0-alpha] - 2026-07-11
 
 ### Added

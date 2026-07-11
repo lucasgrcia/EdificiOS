@@ -145,6 +145,18 @@ Mensaje operativo generado **automáticamente por la aplicación** para informar
 
 **Persistencia:** tabla `notifications`. Sin Domain Events en el MVP actual.
 
+**Lectura (Sprint 12):** `NotificationView` vía `NotificationQueryRepository`. HTTP Query separado del POST de creación.
+
+**Diferencia con otros conceptos:**
+
+| Concepto | Rol | Persistencia |
+|----------|-----|--------------|
+| **Notification** | Mensaje operativo dirigido a un Actor | Tabla `notifications` |
+| **Timeline Entry** | Visualización cronológica de un hecho en el contexto de un Incident | No se persiste; se compone en lectura |
+| **Event Log** | Auditoría de transiciones de dominio (Incident, Shift) | Tabla `events` append-only |
+
+Una Notification **puede aparecer** en el Timeline como entrada `type: NOTIFICATION`, pero **no pertenece** al Event Log. El Event Log registra Domain Events (`workflow.flow.*`); las Notifications son intenciones operativas independientes generadas en Application.
+
 ---
 
 ## Conceptos transversales
@@ -212,11 +224,15 @@ Vista de lectura (read model) que ordena cronológicamente los hechos operativos
 | Event Log | `workflow.flow.detected`, `.assigned`, etc. |
 | Evidencia asociada | `EVIDENCE_ASSOCIATED` |
 | WorkOrder | `WORK_ORDER_CREATED` |
-| Notification | `INCIDENT_DETECTED`, `INCIDENT_ASSIGNED`, `INCIDENT_RESOLVED`, `WORK_ORDER_STARTED`, `WORK_ORDER_COMPLETED` |
+| WorkOrder | `WORK_ORDER_CREATED` |
+| Notification (repositorio) | `INCIDENT_DETECTED`, `INCIDENT_ASSIGNED`, etc. |
+| Notification (use case Sprint 12) | `NOTIFICATION` |
+
+Sprint 12: `GetIncidentTimelineUseCase` enriquece el timeline con `NotificationQueryRepository.findRecent(100)`, filtrando solo tipos `INCIDENT_*` y mapeándolos a entradas `NOTIFICATION`.
 
 **HTTP:** `GET /api/v1/operations/incidents/:incidentId/timeline` → array plano de entradas.
 
-**Deuda conocida (P2):** correlación de `notifications` sin `incident_id`; WorkOrder solo en creación.
+**Deuda conocida (P2):** enriquecimiento usa `findRecent(100)` sin filtro por `incidentId`; correlación heurística en repositorio persiste para otras fuentes.
 
 ---
 
@@ -290,11 +306,26 @@ Timeline operacional de un Incident:
 ```
 GET /api/v1/operations/incidents/:incidentId/timeline
   └── GetIncidentTimelineUseCase
-        └── IncidentTimelineRepository
-              ├── events
-              ├── event_evidences
-              ├── work_orders
-              └── notifications
+        ├── IncidentTimelineRepository
+        │     ├── events
+        │     ├── event_evidences
+        │     ├── work_orders
+        │     └── notifications (correlación SQL)
+        └── NotificationQueryRepository.findRecent(100)
+              └── entradas NOTIFICATION (INCIDENT_*)
+```
+
+Notification Read Model (Sprint 12):
+
+```
+GET /api/v1/operations/notifications/:id
+GET /api/v1/operations/actors/:actorId/notifications
+  └── GetNotificationByIdUseCase / ListNotificationsUseCase
+        └── NotificationQueryRepository
+
+GET /api/v1/operations/dashboard?actorId=…
+  └── GetOperationsDashboardUseCase
+        └── NotificationQueryRepository.findByRecipient()
 ```
 
 ---

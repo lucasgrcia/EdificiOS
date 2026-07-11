@@ -6,6 +6,7 @@ import { TimelineEntryView } from './incident-timeline';
 
 export const EVIDENCE_ASSOCIATED_TIMELINE_TYPE = 'EVIDENCE_ASSOCIATED';
 export const WORK_ORDER_CREATED_TIMELINE_TYPE = 'WORK_ORDER_CREATED';
+export const NOTIFICATION_TIMELINE_TYPE = 'NOTIFICATION';
 
 export type IncidentEventTimelineRow = {
   name: string;

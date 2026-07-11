@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
 import { GetOperationsDashboardUseCase } from './application/get-operations-dashboard-use-case';
+import { GetNotificationByIdUseCase } from './application/get-notification-by-id-use-case';
 import { GetIncidentByIdUseCase } from './application/get-incident-by-id-use-case';
 import { GetIncidentTimelineUseCase } from './application/get-incident-timeline-use-case';
 import { ListEvidenceByEventUseCase } from './application/list-evidence-by-event-use-case';
+import { ListNotificationsUseCase } from './application/list-notifications-use-case';
 import { ListIncidentsUseCase } from './application/list-incidents-use-case';
 import { AssignIncidentUseCase } from './application/assign-incident-use-case';
 import {
@@ -41,7 +43,9 @@ import { AssetsController } from './infrastructure/http/assets.controller';
 import { CaptureEvidenceMultipartPipe } from './infrastructure/http/capture-evidence-multipart.pipe';
 import { DashboardController } from './infrastructure/http/dashboard.controller';
 import { DetectIncidentRequestPipe } from './infrastructure/http/detect-incident-request.pipe';
+import { GetNotificationByIdParamsPipe } from './infrastructure/http/get-notification-by-id-params.pipe';
 import { GetIncidentByIdParamsPipe } from './infrastructure/http/get-incident-by-id-params.pipe';
+import { ListNotificationsByActorParamsPipe } from './infrastructure/http/list-notifications-by-actor-params.pipe';
 import { ListIncidentsQueryPipe } from './infrastructure/http/list-incidents-query.pipe';
 import { EventsController } from './infrastructure/http/events.controller';
 import { ListEvidenceByEventParamsPipe } from './infrastructure/http/list-evidence-by-event-params.pipe';
@@ -59,6 +63,7 @@ import { CreateWorkOrderFromIncidentRequestPipe } from './infrastructure/http/cr
 import { GetWorkOrderByIdParamsPipe } from './infrastructure/http/get-work-order-by-id-params.pipe';
 import { ListWorkOrdersByIncidentParamsPipe } from './infrastructure/http/list-work-orders-by-incident-params.pipe';
 import { CreateNotificationRequestPipe } from './infrastructure/http/create-notification-request.pipe';
+import { NotificationQueryController } from './infrastructure/http/notification-query.controller';
 import { NotificationsController } from './infrastructure/http/notifications.controller';
 import { WorkOrdersController } from './infrastructure/http/work-orders.controller';
 import { LocalFileStorage } from './infrastructure/file-storage/local-file-storage';
@@ -104,12 +109,15 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     WorkOrdersController,
     IncidentWorkOrdersController,
     NotificationsController,
+    NotificationQueryController,
   ],
   providers: [
     DetectIncidentRequestPipe,
     AssignIncidentRequestPipe,
     ListIncidentsQueryPipe,
     GetIncidentByIdParamsPipe,
+    GetNotificationByIdParamsPipe,
+    ListNotificationsByActorParamsPipe,
     ListEvidenceByEventParamsPipe,
     CaptureEvidenceMultipartPipe,
     RegisterAssetRequestPipe,
@@ -226,12 +234,17 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     },
     {
       provide: GetIncidentTimelineUseCase,
-      inject: [PostgresIncidentTimelineRepository],
+      inject: [
+        PostgresIncidentTimelineRepository,
+        PostgresNotificationQueryRepository,
+      ],
       useFactory: (
         incidentTimelineRepository: PostgresIncidentTimelineRepository,
+        notificationQueryRepository: PostgresNotificationQueryRepository,
       ) =>
         new GetIncidentTimelineUseCase({
           incidentTimelineRepository,
+          notificationQueryRepository,
         }),
     },
     {
@@ -252,6 +265,26 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
         new ListIncidentsUseCase({
           incidentQueryRepository,
           assetRepository,
+        }),
+    },
+    {
+      provide: GetNotificationByIdUseCase,
+      inject: [PostgresNotificationQueryRepository],
+      useFactory: (
+        notificationQueryRepository: PostgresNotificationQueryRepository,
+      ) =>
+        new GetNotificationByIdUseCase({
+          notificationQueryRepository,
+        }),
+    },
+    {
+      provide: ListNotificationsUseCase,
+      inject: [PostgresNotificationQueryRepository],
+      useFactory: (
+        notificationQueryRepository: PostgresNotificationQueryRepository,
+      ) =>
+        new ListNotificationsUseCase({
+          notificationQueryRepository,
         }),
     },
     {

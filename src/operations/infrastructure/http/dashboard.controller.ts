@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 
 import { DashboardView } from '../../application/dashboard-view';
 import { GetOperationsDashboardUseCase } from '../../application/get-operations-dashboard-use-case';
@@ -10,7 +10,11 @@ export class DashboardController {
   ) {}
 
   @Get()
-  getDashboard(): Promise<DashboardView> {
-    return this.getOperationsDashboardUseCase.execute();
+  getDashboard(@Query('actorId') actorId?: string): Promise<DashboardView> {
+    if (actorId === undefined) {
+      return this.getOperationsDashboardUseCase.execute();
+    }
+
+    return this.getOperationsDashboardUseCase.execute({ actorId });
   }
 }
