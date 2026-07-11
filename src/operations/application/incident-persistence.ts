@@ -1,3 +1,6 @@
+import { CorrelationIdProvider } from '../../shared/correlation-id';
+import { ApplicationLogger } from '../../shared/logging/application-logger';
+import { ApplicationMetrics } from '../../shared/metrics/application-metrics';
 import { IncidentStatus } from '../domain/incident';
 import { INCIDENT_ASSIGNED_EVENT_NAME } from '../domain/incident-assigned';
 import { INCIDENT_DETECTED_EVENT_NAME } from '../domain/incident-detected';
@@ -105,6 +108,7 @@ export type OutboxRecord = {
   aggregateType: 'Incident';
   aggregateId: string;
   eventId: string;
+  correlationId: string | null;
   payload: FlowEventRecord;
   status: 'pending';
   createdAt: Date;
@@ -152,4 +156,7 @@ export type UseCaseDependencies = {
   transactionRunner: TransactionRunner;
   idGenerator: IdGenerator;
   clock: Clock;
+  correlationIdProvider: CorrelationIdProvider;
+  logger: ApplicationLogger;
+  metrics: ApplicationMetrics;
 };

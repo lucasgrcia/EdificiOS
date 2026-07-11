@@ -6,6 +6,23 @@ import {
   TransactionRunner,
 } from '../src/operations/application/incident-persistence';
 import { ResolveIncidentUseCase } from '../src/operations/application/resolve-incident-use-case';
+import { CorrelationIdProvider } from '../src/shared/correlation-id';
+import { ApplicationLogger } from '../src/shared/logging/application-logger';
+import { ApplicationMetrics } from '../src/shared/metrics/application-metrics';
+
+function createSilentLogger(
+  correlationIdProvider: CorrelationIdProvider,
+): ApplicationLogger {
+  return new ApplicationLogger({
+    correlationIdProvider,
+    clock: {
+      now: () => new Date('2026-07-07T15:30:00.000Z'),
+    },
+    writer: {
+      write() {},
+    },
+  });
+}
 
 describe('ResolveIncidentUseCase integration', () => {
   const incidentId = '00000000-0000-0000-0000-000000000101';
@@ -79,6 +96,7 @@ describe('ResolveIncidentUseCase integration', () => {
       run: async (work) => work(transaction),
     };
 
+    const correlationIdProvider = new CorrelationIdProvider();
     const useCase = new ResolveIncidentUseCase({
       transactionRunner,
       idGenerator: {
@@ -90,6 +108,9 @@ describe('ResolveIncidentUseCase integration', () => {
       clock: {
         now: () => new Date('2026-07-07T15:30:00.000Z'),
       },
+      correlationIdProvider,
+      logger: createSilentLogger(correlationIdProvider),
+      metrics: new ApplicationMetrics(),
       createNotificationUseCase,
     });
 

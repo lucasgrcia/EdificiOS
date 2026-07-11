@@ -11,6 +11,23 @@ import {
 } from '../src/operations/application/incident-persistence';
 import { ResolveIncidentUseCase } from '../src/operations/application/resolve-incident-use-case';
 import { StartIncidentUseCase } from '../src/operations/application/start-incident-use-case';
+import { CorrelationIdProvider } from '../src/shared/correlation-id';
+import { ApplicationLogger } from '../src/shared/logging/application-logger';
+import { ApplicationMetrics } from '../src/shared/metrics/application-metrics';
+
+function createSilentLogger(
+  correlationIdProvider: CorrelationIdProvider,
+): ApplicationLogger {
+  return new ApplicationLogger({
+    correlationIdProvider,
+    clock: {
+      now: () => new Date('2026-07-07T15:00:00.000Z'),
+    },
+    writer: {
+      write() {},
+    },
+  });
+}
 
 type WriteEntry = {
   kind: 'Incident' | 'Projection' | 'Event' | 'Outbox';
@@ -94,6 +111,7 @@ function createTestHarness() {
     '2026-07-07T16:50:00.000Z',
   ];
   let timestampIndex = 0;
+  const correlationIdProvider = new CorrelationIdProvider();
 
   const transactionRunner: TransactionRunner = {
     run: async (work) => {
@@ -151,6 +169,9 @@ function createTestHarness() {
         notificationId: 'notification-1',
       }),
     },
+    correlationIdProvider,
+    logger: createSilentLogger(correlationIdProvider),
+    metrics: new ApplicationMetrics(),
   };
 
   return {

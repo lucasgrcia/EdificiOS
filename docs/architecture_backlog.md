@@ -11,7 +11,7 @@ Este documento es la **fuente canónica** de ítems P1 y P2. `docs/05_current_st
 - No agregar ítems sin justificación vinculada a una review, ADR o Field Story.
 - Al cerrar un ítem, marcarlo como resuelto con sprint y PR.
 
-Última consolidación: 2026-07-11 (post Sprint 13).
+Última consolidación: 2026-07-11 (post Sprint 14).
 
 ---
 
@@ -246,6 +246,17 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | SHA-256 verifica integridad, no identidad | `05_current_status.md` | Sin deduplicación por hash; dos capturas idénticas son dos Evidence distintas. |
 | Datos legacy con `site_id` huérfano | Sprint 5 Review | Migración `006` después de `004`/`005`. Bootstrap: Site primero. |
 
+### Sprint 14 — Observability (futuro)
+
+| Ítem | Origen | Justificación |
+|------|--------|---------------|
+| Integración Prometheus | Sprint 14 PR4 | `ApplicationMetrics` solo en memoria; sin endpoint `/metrics` ni scrape |
+| Exportador OpenTelemetry | Sprint 14 PR1–PR3 | Sin spans, traces distribuidos ni exportación OTLP |
+| Persistencia de métricas | Sprint 14 PR4 | Contadores se pierden al reiniciar el proceso |
+| Dashboards Grafana | Sprint 14 PR4 | Sin series temporales ni visualización externa |
+| Métricas Notification | Sprint 14 PR4 | Solo Incident tiene contadores `incident.*.{success\|failure}` |
+| `correlationId` en Notification | Sprint 14 PR2 | Notifications no propagan Correlation ID; solo Event Log y Outbox Incident |
+
 ### Sprint 13 — Operational Endpoints (futuro)
 
 | Ítem | Origen | Justificación |
@@ -253,7 +264,7 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | Versión desde `package.json` | Sprint 13 PR3/PR4 | `0.13.0-alpha` duplicada en Health e Info como constante |
 | `environment` configurable | Sprint 13 PR4 | Valor fijo `development`; sin lectura de `NODE_ENV` |
 | Readiness / liveness separados | Sprint 13 PR3 | Un solo endpoint `/health` con `status` y `checks`; sin distinción K8s |
-| Métricas Prometheus | Sprint 13 PR3 | Sin exposición de métricas operativas ni de negocio |
+| Métricas Prometheus | Sprint 13 PR3 | `ApplicationMetrics` en memoria (Sprint 14 PR4); sin scrape Prometheus |
 | Activity Feed paginado | Sprint 13 PR2 | Límite fijo de 20 entradas; sin cursor ni offset |
 | Dashboard Summary optimizable | Sprint 13 PR1 | Cálculo en memoria sobre datos ya cargados; sin agregación SQL dedicada |
 

@@ -2,7 +2,7 @@
 
 Última actualización: 2026-07-11
 
-Sprint 13 — cerrado.
+Sprint 14 — cerrado.
 
 ---
 
@@ -13,7 +13,7 @@ Sprint 13 — cerrado.
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Tests | 531/531 OK |
+| Tests | 549/549 OK |
 | Build | OK |
 
 ---
@@ -255,6 +255,16 @@ Timeline (GetIncidentTimelineUseCase)
 | PR4 | `InfoModule` + `GET /api/v1/info` | ✔ |
 | PR5 | Documentación + Architecture Review | ✔ |
 
+### Sprint 14 — Observability (Correlation ID + Logging + Metrics)
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | `CorrelationIdProvider` + middleware HTTP global | ✔ |
+| PR2 | Propagación `correlationId` → Event Log + Outbox | ✔ |
+| PR3 | `ApplicationLogger` (structured logs) | ✔ |
+| PR4 | `ApplicationMetrics` (contadores en memoria) | ✔ |
+| PR5 | Documentación + Architecture Review | ✔ |
+
 ---
 
 ## Funcionalidades implementadas
@@ -423,6 +433,38 @@ Endpoints transversales fuera del bounded context `operations`. No exponen lógi
 
 Estado: **operativo** (Sprint 13 PR3–PR4).
 
+### Observability
+
+Capa transversal en `src/shared/` que permite reconstruir operaciones HTTP de punta a punta.
+
+```
+HTTP Request
+    ↓
+Correlation ID (middleware → CorrelationIdProvider)
+    ↓
+Application Logger (structured logs con correlationId)
+    ↓
+Application Metrics (contadores success/failure en memoria)
+    ↓
+Event Log (events.correlation_id)
+    ↓
+Outbox (outbox.correlation_id)
+```
+
+| Componente | Ubicación | Rol |
+|------------|-----------|-----|
+| **Correlation ID** | `src/shared/correlation-id.ts`, middleware HTTP | UUID por request; contexto ALS para Application |
+| **Application Logger** | `src/shared/logging/application-logger.ts` | Logs estructurados: `{ timestamp, level, correlationId, message }` |
+| **Application Metrics** | `src/shared/metrics/application-metrics.ts` | Contadores en memoria: `incident.*.{success\|failure}` |
+
+**Propagación:** los use cases Incident (detect, assign, start, resolve) leen `correlationIdProvider.get()` y persisten el mismo UUID en Event Log y Outbox. No se generan UUID adicionales en Application.
+
+**Logging:** INFO al inicio y al completar; ERROR en excepción. No reemplaza el logger de NestJS.
+
+**Métricas:** 8 contadores Incident en memoria. Sin Prometheus ni exportación externa.
+
+Estado: **operativo** (Sprint 14 PR1–PR4).
+
 ---
 
 ## Persistencia
@@ -450,7 +492,7 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 ## Tests
 
 ```
-49 test suites — 531 tests — 0 fallos
+52 test suites — 549 tests — 0 fallos
 ```
 
 | Área | Archivos |
@@ -459,7 +501,8 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 | Dominio Incident | `incident-aggregate-replay.spec.ts`, `incident-p0-guards.spec.ts` |
 | Dominio Evidence | `evidence.spec.ts` |
 | Casos de uso | `detect-incident`, `assign-incident`, `resolve-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order`, `create-notification`, `notification-query`, `get-incident-timeline`, `get-operations-dashboard` |
-| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `notification-query.http`, `dashboard.http`, `health.http`, `info.http` |
+| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `notification-query.http`, `dashboard.http`, `health.http`, `info.http`, `correlation-id.http` |
+| Observability | `application-logger.integration.spec.ts`, `application-metrics.integration.spec.ts` |
 | Repositorios / Query | `postgres-*-repository.integration.spec.ts`, `postgres-incident-timeline-repository.integration.spec.ts` |
 | Transacciones | `postgres-operations-transaction-runner.integration.spec.ts` |
 
@@ -469,7 +512,7 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 
 ## Arquitectura
 
-- Monolito modular, bounded context `operations` + módulos transversales (`health`, `info`).
+- Monolito modular, bounded context `operations` + módulos transversales (`health`, `info`, `shared`).
 - Clean Architecture: `domain → application → infrastructure`.
 - DDD táctico: agregados, Value Objects, Domain Events.
 - Transactional Outbox + Event Log como fuente de verdad (Incident).
@@ -479,6 +522,7 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - Timeline: read model desde tablas de lectura; enriquecido en use case con entradas `NOTIFICATION` (Sprint 12).
 - Dashboard: `summary` y `activityFeed` calculados en Application (Sprint 13).
 - Health / Info: módulos independientes de Operations; Health verifica pool PostgreSQL; Info expone metadatos constantes.
+- Observability: Correlation ID + Application Logger + Application Metrics en `SharedModule` (Sprint 14); propagación a Event Log y Outbox.
 - Query repositories: `IncidentQuery`, `EvidenceQuery`, `EventQuery`, `WorkOrderQuery`, `NotificationQuery`, `IncidentTimeline`.
 - Evidence respalda Domain Events, no Incident (ADR-006).
 - Site es agregado explícito; Asset referencia Site por identidad (ADR-007).
@@ -489,7 +533,7 @@ Documentación de decisiones: `docs/architecture_decisions/`.
 
 Glosario ubicuo: `docs/glossary.md`. Deuda arquitectónica: `docs/architecture_backlog.md`.
 
-Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`, `docs/architecture_reviews/sprint_13_operational_endpoints.md`.
+Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`, `docs/architecture_reviews/sprint_13_operational_endpoints.md`, `docs/architecture_reviews/sprint_14_observability.md`.
 
 ---
 
@@ -528,6 +572,8 @@ Deuda futura Sprint 11 (Notifications): templates, canales reales, mark as read.
 
 Deuda futura Sprint 12 (Notification Queries): `findRecent(100)` en Timeline sin filtro por Incident, paginación, mark as read.
 
-Deuda futura Sprint 13 (Operational Endpoints): versión desde `package.json`, `environment` configurable, readiness/liveness, métricas Prometheus, Activity Feed paginado, Dashboard Summary optimizable.
+Deuda futura Sprint 13 (Operational Endpoints): versión desde `package.json`, `environment` configurable, readiness/liveness, Activity Feed paginado, Dashboard Summary optimizable.
+
+Deuda futura Sprint 14 (Observability): integración Prometheus, exportador OpenTelemetry, persistencia de métricas, dashboards Grafana, métricas Notification, `correlationId` en Notification.
 
 Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`.

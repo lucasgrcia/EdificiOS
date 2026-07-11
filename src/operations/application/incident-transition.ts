@@ -35,15 +35,17 @@ export async function persistIncidentTransition(
   eventId: string,
   outboxId: string,
   occurredAt: Date,
+  correlationId: string | null,
 ): Promise<void> {
   const event = pullExactlyOneDomainEvent(incident);
-  const flow = toFlowEventRecord(event);
+  const flow = toFlowEventRecord(event, correlationId);
 
   const outbox: OutboxRecord = {
     id: outboxId,
     aggregateType: flow.aggregateType,
     aggregateId: flow.aggregateId,
     eventId: flow.id,
+    correlationId,
     payload: flow,
     status: 'pending',
     createdAt: occurredAt,

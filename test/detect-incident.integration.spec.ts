@@ -10,6 +10,23 @@ import {
   Transaction,
   TransactionRunner,
 } from '../src/operations/application/incident-persistence';
+import { CorrelationIdProvider } from '../src/shared/correlation-id';
+import { ApplicationLogger } from '../src/shared/logging/application-logger';
+import { ApplicationMetrics } from '../src/shared/metrics/application-metrics';
+
+function createSilentLogger(
+  correlationIdProvider: CorrelationIdProvider,
+): ApplicationLogger {
+  return new ApplicationLogger({
+    correlationIdProvider,
+    clock: {
+      now: () => new Date('2026-07-07T15:00:00.000Z'),
+    },
+    writer: {
+      write() {},
+    },
+  });
+}
 
 describe('DetectIncidentUseCase integration', () => {
   const siteId = '00000000-0000-0000-0000-000000000010';
@@ -39,6 +56,7 @@ describe('DetectIncidentUseCase integration', () => {
   function createHarness(options?: {
     assetExists?: boolean;
     activeShiftExists?: boolean;
+    correlationIdProvider?: CorrelationIdProvider;
   }) {
     const writes: Array<{
       kind: 'Incident' | 'Event' | 'Outbox';
@@ -83,6 +101,8 @@ describe('DetectIncidentUseCase integration', () => {
     };
 
     const ids = ['incident-1', 'event-1', 'outbox-1'];
+    const correlationIdProvider =
+      options?.correlationIdProvider ?? new CorrelationIdProvider();
     const useCase = new DetectIncidentUseCase({
       transactionRunner,
       idGenerator: {
@@ -99,6 +119,9 @@ describe('DetectIncidentUseCase integration', () => {
       clock: {
         now: () => new Date('2026-07-07T15:00:00.000Z'),
       },
+      correlationIdProvider,
+      logger: createSilentLogger(correlationIdProvider),
+      metrics: new ApplicationMetrics(),
       assetRepository: {
         findById: async (id) =>
           options?.assetExists === false || id !== assetId ? null : assetRecord,
@@ -289,6 +312,118 @@ describe('DetectIncidentUseCase integration', () => {
 
       expect(assetMissingHarness.createNotificationUseCase.execute).not.toHaveBeenCalled();
       expect(noShiftHarness.createNotificationUseCase.execute).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Correlation ID propagation', () => {
+    const correlationId = '00000000-0000-0000-0000-0000000000c1';
+    const secondCorrelationId = '00000000-0000-0000-0000-0000000000c2';
+
+    function getEventWrite(
+      writes: Array<{
+        kind: 'Incident' | 'Event' | 'Outbox';
+        record: IncidentRecord | FlowEventRecord | OutboxRecord;
+      }>,
+    ): FlowEventRecord {
+      const eventWrite = writes.find((write) => write.kind === 'Event');
+
+      if (eventWrite === undefined) {
+        throw new Error('Event write not found.');
+      }
+
+      return eventWrite.record as FlowEventRecord;
+    }
+
+    function getOutboxWrite(
+      writes: Array<{
+        kind: 'Incident' | 'Event' | 'Outbox';
+        record: IncidentRecord | FlowEventRecord | OutboxRecord;
+      }>,
+    ): OutboxRecord {
+      const outboxWrite = writes.find((write) => write.kind === 'Outbox');
+
+      if (outboxWrite === undefined) {
+        throw new Error('Outbox write not found.');
+      }
+
+      return outboxWrite.record as OutboxRecord;
+    }
+
+    it('persists correlationId in Event Log', async () => {
+      const correlationIdProvider = new CorrelationIdProvider();
+      const { useCase, writes } = createHarness({ correlationIdProvider });
+
+      await correlationIdProvider.runWithCorrelationId(correlationId, () =>
+        useCase.execute({
+          assetId,
+          description: 'Carlos detects a leak.',
+        }),
+      );
+
+      expect(getEventWrite(writes).correlationId).toBe(correlationId);
+    });
+
+    it('persists correlationId in Outbox', async () => {
+      const correlationIdProvider = new CorrelationIdProvider();
+      const { useCase, writes } = createHarness({ correlationIdProvider });
+
+      await correlationIdProvider.runWithCorrelationId(correlationId, () =>
+        useCase.execute({
+          assetId,
+          description: 'Carlos detects a leak.',
+        }),
+      );
+
+      expect(getOutboxWrite(writes).correlationId).toBe(correlationId);
+    });
+
+    it('uses the same correlationId in Event Log and Outbox', async () => {
+      const correlationIdProvider = new CorrelationIdProvider();
+      const { useCase, writes } = createHarness({ correlationIdProvider });
+
+      await correlationIdProvider.runWithCorrelationId(correlationId, () =>
+        useCase.execute({
+          assetId,
+          description: 'Carlos detects a leak.',
+        }),
+      );
+
+      const eventWrite = getEventWrite(writes);
+      const outboxWrite = getOutboxWrite(writes);
+
+      expect(eventWrite.correlationId).toBe(correlationId);
+      expect(outboxWrite.correlationId).toBe(correlationId);
+      expect(outboxWrite.payload.correlationId).toBe(correlationId);
+    });
+
+    it('uses different correlationIds for different requests', async () => {
+      const firstProvider = new CorrelationIdProvider();
+      const secondProvider = new CorrelationIdProvider();
+      const firstHarness = createHarness({
+        correlationIdProvider: firstProvider,
+      });
+      const secondHarness = createHarness({
+        correlationIdProvider: secondProvider,
+      });
+
+      await firstProvider.runWithCorrelationId(correlationId, () =>
+        firstHarness.useCase.execute({
+          assetId,
+          description: 'Carlos detects a leak.',
+        }),
+      );
+
+      await secondProvider.runWithCorrelationId(secondCorrelationId, () =>
+        secondHarness.useCase.execute({
+          assetId,
+          description: 'Ascensor detenido entre pisos.',
+        }),
+      );
+
+      expect(getEventWrite(firstHarness.writes).correlationId).toBe(correlationId);
+      expect(getEventWrite(secondHarness.writes).correlationId).toBe(
+        secondCorrelationId,
+      );
     });
   });
 });

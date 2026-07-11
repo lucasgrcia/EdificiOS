@@ -83,8 +83,16 @@ import { PostgresWorkOrderRepository } from './infrastructure/persistence/postgr
 import { PostgresWorkOrderQueryRepository } from './infrastructure/persistence/postgres-work-order-query-repository';
 import { PostgresNotificationRepository } from './infrastructure/persistence/postgres-notification-repository';
 import { PostgresNotificationQueryRepository } from './infrastructure/persistence/postgres-notification-query-repository';
+import { CorrelationIdProvider } from '../shared/correlation-id';
+import { ApplicationLogger } from '../shared/logging/application-logger';
+import { ApplicationMetrics } from '../shared/metrics/application-metrics';
 
-function createUseCaseDependencies(transactionRunner: TransactionRunner) {
+function createUseCaseDependencies(
+  transactionRunner: TransactionRunner,
+  correlationIdProvider: CorrelationIdProvider,
+  logger: ApplicationLogger,
+  metrics: ApplicationMetrics,
+) {
   return {
     transactionRunner,
     idGenerator: {
@@ -93,6 +101,9 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     clock: {
       now: () => new Date(),
     },
+    correlationIdProvider,
+    logger,
+    metrics,
   };
 }
 
@@ -345,15 +356,26 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
         PostgresAssetRepository,
         PostgresShiftRepository,
         CreateNotificationUseCase,
+        CorrelationIdProvider,
+        ApplicationLogger,
+        ApplicationMetrics,
       ],
       useFactory: (
         transactionRunner: TransactionRunner,
         assetRepository: PostgresAssetRepository,
         shiftRepository: PostgresShiftRepository,
         createNotificationUseCase: CreateNotificationUseCase,
+        correlationIdProvider: CorrelationIdProvider,
+        logger: ApplicationLogger,
+        metrics: ApplicationMetrics,
       ) =>
         new DetectIncidentUseCase({
-          ...createUseCaseDependencies(transactionRunner),
+          ...createUseCaseDependencies(
+            transactionRunner,
+            correlationIdProvider,
+            logger,
+            metrics,
+          ),
           assetRepository,
           shiftRepository,
           createNotificationUseCase,
@@ -364,34 +386,73 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
       inject: [
         PostgresOperationsTransactionRunner,
         CreateNotificationUseCase,
+        CorrelationIdProvider,
+        ApplicationLogger,
+        ApplicationMetrics,
       ],
       useFactory: (
         transactionRunner: TransactionRunner,
         createNotificationUseCase: CreateNotificationUseCase,
+        correlationIdProvider: CorrelationIdProvider,
+        logger: ApplicationLogger,
+        metrics: ApplicationMetrics,
       ) =>
         new AssignIncidentUseCase({
-          ...createUseCaseDependencies(transactionRunner),
+          ...createUseCaseDependencies(
+            transactionRunner,
+            correlationIdProvider,
+            logger,
+            metrics,
+          ),
           createNotificationUseCase,
         }),
     },
     {
       provide: StartIncidentUseCase,
-      inject: [PostgresOperationsTransactionRunner],
-      useFactory: (transactionRunner: TransactionRunner) =>
-        new StartIncidentUseCase(createUseCaseDependencies(transactionRunner)),
+      inject: [
+        PostgresOperationsTransactionRunner,
+        CorrelationIdProvider,
+        ApplicationLogger,
+        ApplicationMetrics,
+      ],
+      useFactory: (
+        transactionRunner: TransactionRunner,
+        correlationIdProvider: CorrelationIdProvider,
+        logger: ApplicationLogger,
+        metrics: ApplicationMetrics,
+      ) =>
+        new StartIncidentUseCase(
+          createUseCaseDependencies(
+            transactionRunner,
+            correlationIdProvider,
+            logger,
+            metrics,
+          ),
+        ),
     },
     {
       provide: ResolveIncidentUseCase,
       inject: [
         PostgresOperationsTransactionRunner,
         CreateNotificationUseCase,
+        CorrelationIdProvider,
+        ApplicationLogger,
+        ApplicationMetrics,
       ],
       useFactory: (
         transactionRunner: TransactionRunner,
         createNotificationUseCase: CreateNotificationUseCase,
+        correlationIdProvider: CorrelationIdProvider,
+        logger: ApplicationLogger,
+        metrics: ApplicationMetrics,
       ) =>
         new ResolveIncidentUseCase({
-          ...createUseCaseDependencies(transactionRunner),
+          ...createUseCaseDependencies(
+            transactionRunner,
+            correlationIdProvider,
+            logger,
+            metrics,
+          ),
           createNotificationUseCase,
         }),
     },

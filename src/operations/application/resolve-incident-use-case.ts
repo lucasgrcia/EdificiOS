@@ -10,6 +10,10 @@ import {
   persistIncidentTransition,
   rehydrateIncident,
 } from './incident-transition';
+import {
+  INCIDENT_RESOLVE_FAILURE_METRIC,
+  INCIDENT_RESOLVE_SUCCESS_METRIC,
+} from '../../shared/metrics/metrics-view';
 
 export type ResolveIncidentCommand = {
   incidentId: string;
@@ -19,6 +23,9 @@ const INCIDENT_RESOLVED_NOTIFICATION_TYPE = 'INCIDENT_RESOLVED';
 const INCIDENT_RESOLVED_NOTIFICATION_CHANNEL = 'IN_APP';
 const INCIDENT_RESOLVED_NOTIFICATION_MESSAGE =
   'La incidencia fue resuelta correctamente.';
+const STARTED_MESSAGE = 'ResolveIncidentUseCase started';
+const COMPLETED_MESSAGE = 'ResolveIncidentUseCase completed';
+const FAILED_MESSAGE = 'ResolveIncidentUseCase failed';
 
 export type ResolveIncidentUseCaseDependencies = UseCaseDependencies & {
   createNotificationUseCase: {
@@ -34,63 +41,77 @@ export class ResolveIncidentUseCase {
   async execute(
     command: ResolveIncidentCommand,
   ): Promise<IncidentTransitionResult> {
-    let recipientId = '';
+    this.dependencies.logger.info(STARTED_MESSAGE);
 
-    const result = await this.dependencies.transactionRunner.run(
-      async (transaction) => {
-        const record = await transaction.incidents.findById(command.incidentId);
+    try {
+      let recipientId = '';
 
-        if (record === null) {
-          throw new Error('Incident not found.');
-        }
+      const result = await this.dependencies.transactionRunner.run(
+        async (transaction) => {
+          const record = await transaction.incidents.findById(command.incidentId);
 
-        recipientId =
-          record.currentProjectionState.assignedActorId ??
-          record.currentProjectionState.actorId;
+          if (record === null) {
+            throw new Error('Incident not found.');
+          }
 
-        const eventId = this.dependencies.idGenerator.generate();
-        const outboxId = this.dependencies.idGenerator.generate();
-        const resolvedAt = this.dependencies.clock.now();
-        const incident = rehydrateIncident(record);
+          recipientId =
+            record.currentProjectionState.assignedActorId ??
+            record.currentProjectionState.actorId;
 
-        incident.resolve({
-          flowId: eventId,
-          resolvedAt,
-        });
+          const eventId = this.dependencies.idGenerator.generate();
+          const outboxId = this.dependencies.idGenerator.generate();
+          const resolvedAt = this.dependencies.clock.now();
+          const incident = rehydrateIncident(record);
 
-        const updatedRecord = {
-          ...record,
-          currentProjectionState: {
-            ...record.currentProjectionState,
-            status: incident.currentStatus,
-            resolvedAt: resolvedAt.toISOString(),
-          },
-        };
+          incident.resolve({
+            flowId: eventId,
+            resolvedAt,
+          });
 
-        await persistIncidentTransition(
-          transaction,
-          incident,
-          updatedRecord,
-          eventId,
-          outboxId,
-          resolvedAt,
-        );
+          const updatedRecord = {
+            ...record,
+            currentProjectionState: {
+              ...record.currentProjectionState,
+              status: incident.currentStatus,
+              resolvedAt: resolvedAt.toISOString(),
+            },
+          };
 
-        return {
-          incidentId: command.incidentId,
-          eventId,
-          outboxId,
-        };
-      },
-    );
+          const correlationId = this.dependencies.correlationIdProvider.get();
 
-    await this.dependencies.createNotificationUseCase.execute({
-      recipientId,
-      type: INCIDENT_RESOLVED_NOTIFICATION_TYPE,
-      channel: INCIDENT_RESOLVED_NOTIFICATION_CHANNEL,
-      message: INCIDENT_RESOLVED_NOTIFICATION_MESSAGE,
-    });
+          await persistIncidentTransition(
+            transaction,
+            incident,
+            updatedRecord,
+            eventId,
+            outboxId,
+            resolvedAt,
+            correlationId,
+          );
 
-    return result;
+          return {
+            incidentId: command.incidentId,
+            eventId,
+            outboxId,
+          };
+        },
+      );
+
+      await this.dependencies.createNotificationUseCase.execute({
+        recipientId,
+        type: INCIDENT_RESOLVED_NOTIFICATION_TYPE,
+        channel: INCIDENT_RESOLVED_NOTIFICATION_CHANNEL,
+        message: INCIDENT_RESOLVED_NOTIFICATION_MESSAGE,
+      });
+
+      this.dependencies.logger.info(COMPLETED_MESSAGE);
+      this.dependencies.metrics.increment(INCIDENT_RESOLVE_SUCCESS_METRIC);
+
+      return result;
+    } catch (error) {
+      this.dependencies.logger.error(FAILED_MESSAGE);
+      this.dependencies.metrics.increment(INCIDENT_RESOLVE_FAILURE_METRIC);
+      throw error;
+    }
   }
 }

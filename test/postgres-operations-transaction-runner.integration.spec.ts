@@ -2,6 +2,8 @@ import { PostgresOperationsTransactionRunner } from '../src/operations/infrastru
 import { PostgresOperationsPool } from '../src/operations/infrastructure/persistence/postgres-operations-pool';
 
 describe('PostgresOperationsTransactionRunner integration', () => {
+  const correlationId = '00000000-0000-0000-0000-0000000000c1';
+
   it('rolls back Incident, Event, and Outbox when a write fails', async () => {
     const queries: string[] = [];
     const failure = new Error('write failed');
@@ -44,7 +46,7 @@ describe('PostgresOperationsTransactionRunner integration', () => {
           incidentId: '00000000-0000-0000-0000-000000000001',
           name: 'workflow.flow.detected',
           schemaVersion: 1,
-          correlationId: null,
+          correlationId,
           causationId: null,
           actorId: null,
           payload: {
@@ -59,6 +61,7 @@ describe('PostgresOperationsTransactionRunner integration', () => {
           aggregateType: 'Incident',
           aggregateId: '00000000-0000-0000-0000-000000000001',
           eventId: '00000000-0000-0000-0000-000000000002',
+          correlationId,
           payload: {
             id: '00000000-0000-0000-0000-000000000002',
             aggregateType: 'Incident',
@@ -66,7 +69,7 @@ describe('PostgresOperationsTransactionRunner integration', () => {
             incidentId: '00000000-0000-0000-0000-000000000001',
             name: 'workflow.flow.detected',
             schemaVersion: 1,
-            correlationId: null,
+            correlationId,
             causationId: null,
             actorId: null,
             payload: {
@@ -90,5 +93,77 @@ describe('PostgresOperationsTransactionRunner integration', () => {
     ]);
     expect(queries).not.toContain('COMMIT');
     expect(client.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('persists correlation_id in Event Log and Outbox writes', async () => {
+    const eventParams: unknown[] = [];
+    const outboxParams: unknown[] = [];
+    const client = {
+      query: jest.fn(async (sql: string, params?: unknown[]) => {
+        if (sql.includes('INSERT INTO events')) {
+          eventParams.push(...(params ?? []));
+        }
+
+        if (sql.includes('INSERT INTO outbox')) {
+          outboxParams.push(...(params ?? []));
+        }
+      }),
+      release: jest.fn(),
+    };
+    const operationsPool = {
+      pool: {
+        connect: jest.fn(async () => client),
+      },
+    } as unknown as PostgresOperationsPool;
+    const runner = new PostgresOperationsTransactionRunner(operationsPool);
+
+    await runner.run(async (transaction) => {
+      await transaction.events.save({
+        id: '00000000-0000-0000-0000-000000000002',
+        aggregateType: 'Incident',
+        aggregateId: '00000000-0000-0000-0000-000000000001',
+        incidentId: '00000000-0000-0000-0000-000000000001',
+        name: 'workflow.flow.detected',
+        schemaVersion: 1,
+        correlationId,
+        causationId: null,
+        actorId: null,
+        payload: {
+          incidentId: '00000000-0000-0000-0000-000000000001',
+          description: 'Carlos detects a leak.',
+          detectedAt: '2026-07-07T15:00:00.000Z',
+        },
+        occurredAt: new Date('2026-07-07T15:00:00.000Z'),
+      });
+      await transaction.outbox.save({
+        id: '00000000-0000-0000-0000-000000000003',
+        aggregateType: 'Incident',
+        aggregateId: '00000000-0000-0000-0000-000000000001',
+        eventId: '00000000-0000-0000-0000-000000000002',
+        correlationId,
+        payload: {
+          id: '00000000-0000-0000-0000-000000000002',
+          aggregateType: 'Incident',
+          aggregateId: '00000000-0000-0000-0000-000000000001',
+          incidentId: '00000000-0000-0000-0000-000000000001',
+          name: 'workflow.flow.detected',
+          schemaVersion: 1,
+          correlationId,
+          causationId: null,
+          actorId: null,
+          payload: {
+            incidentId: '00000000-0000-0000-0000-000000000001',
+            description: 'Carlos detects a leak.',
+            detectedAt: '2026-07-07T15:00:00.000Z',
+          },
+          occurredAt: new Date('2026-07-07T15:00:00.000Z'),
+        },
+        status: 'pending',
+        createdAt: new Date('2026-07-07T15:00:00.000Z'),
+      });
+    });
+
+    expect(eventParams[6]).toBe(correlationId);
+    expect(outboxParams[4]).toBe(correlationId);
   });
 });

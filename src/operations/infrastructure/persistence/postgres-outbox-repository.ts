@@ -16,18 +16,20 @@ export class PostgresOutboxRepository implements OutboxRepository {
           aggregate_type,
           aggregate_id,
           event_id,
+          correlation_id,
           payload,
           status,
           created_at,
           processed_at
         )
-        VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, NULL)
+        VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, NULL)
       `,
       [
         outbox.id,
         outbox.aggregateType,
         outbox.aggregateId,
         outbox.eventId,
+        outbox.correlationId,
         JSON.stringify(outbox.payload),
         outbox.status,
         outbox.createdAt,

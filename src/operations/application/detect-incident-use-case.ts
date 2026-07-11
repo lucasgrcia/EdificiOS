@@ -19,6 +19,10 @@ import {
 import { toFlowEventRecord } from './map-incident-domain-event';
 import { pullExactlyOneDomainEvent } from './pull-exactly-one-domain-event';
 import { ShiftRepository } from './shift-persistence';
+import {
+  INCIDENT_DETECT_FAILURE_METRIC,
+  INCIDENT_DETECT_SUCCESS_METRIC,
+} from '../../shared/metrics/metrics-view';
 
 export type DetectIncidentCommand = {
   assetId: string;
@@ -29,6 +33,9 @@ const INCIDENT_DETECTED_NOTIFICATION_TYPE = 'INCIDENT_DETECTED';
 const INCIDENT_DETECTED_NOTIFICATION_CHANNEL = 'IN_APP';
 const INCIDENT_DETECTED_NOTIFICATION_MESSAGE =
   'Se detectó una nueva incidencia.';
+const STARTED_MESSAGE = 'DetectIncidentUseCase started';
+const COMPLETED_MESSAGE = 'DetectIncidentUseCase completed';
+const FAILED_MESSAGE = 'DetectIncidentUseCase failed';
 
 export type DetectIncidentUseCaseDependencies = UseCaseDependencies & {
   assetRepository: AssetRepository;
@@ -44,99 +51,113 @@ export class DetectIncidentUseCase {
   async execute(
     command: DetectIncidentCommand,
   ): Promise<IncidentTransitionResult> {
-    const assetRecord = await this.dependencies.assetRepository.findById(
-      command.assetId,
-    );
+    this.dependencies.logger.info(STARTED_MESSAGE);
 
-    if (assetRecord === null) {
-      throw new AssetNotFoundError(command.assetId);
-    }
+    try {
+      const assetRecord = await this.dependencies.assetRepository.findById(
+        command.assetId,
+      );
 
-    const activeShifts = await this.dependencies.shiftRepository.findActiveBySite(
-      assetRecord.siteId,
-    );
+      if (assetRecord === null) {
+        throw new AssetNotFoundError(command.assetId);
+      }
 
-    if (activeShifts.length === 0) {
-      throw new NoActiveShiftError(assetRecord.siteId);
-    }
+      const activeShifts =
+        await this.dependencies.shiftRepository.findActiveBySite(
+          assetRecord.siteId,
+        );
 
-    if (activeShifts.length > 1) {
-      throw new MultipleActiveShiftsError(assetRecord.siteId);
-    }
+      if (activeShifts.length === 0) {
+        throw new NoActiveShiftError(assetRecord.siteId);
+      }
 
-    const assetId = AssetId.create(assetRecord.id);
-    const shiftId = ShiftId.create(activeShifts[0].id);
-    const actorId = ActorId.create(activeShifts[0].actorId);
+      if (activeShifts.length > 1) {
+        throw new MultipleActiveShiftsError(assetRecord.siteId);
+      }
 
-    const result = await this.dependencies.transactionRunner.run(
-      async (transaction) => {
-      const incidentId = this.dependencies.idGenerator.generate();
-      const eventId = this.dependencies.idGenerator.generate();
-      const outboxId = this.dependencies.idGenerator.generate();
-      const detectedAt = this.dependencies.clock.now();
+      const assetId = AssetId.create(assetRecord.id);
+      const shiftId = ShiftId.create(activeShifts[0].id);
+      const actorId = ActorId.create(activeShifts[0].actorId);
 
-      const incident = IncidentAggregate.detect({
-        incidentId,
-        flowId: eventId,
-        assetId,
-        shiftId,
-        actorId,
-        description: command.description,
-        detectedAt,
+      const result = await this.dependencies.transactionRunner.run(
+        async (transaction) => {
+          const incidentId = this.dependencies.idGenerator.generate();
+          const eventId = this.dependencies.idGenerator.generate();
+          const outboxId = this.dependencies.idGenerator.generate();
+          const detectedAt = this.dependencies.clock.now();
+
+          const incident = IncidentAggregate.detect({
+            incidentId,
+            flowId: eventId,
+            assetId,
+            shiftId,
+            actorId,
+            description: command.description,
+            detectedAt,
+          });
+          const event = pullExactlyOneDomainEvent(incident);
+          const correlationId = this.dependencies.correlationIdProvider.get();
+          const flow = toFlowEventRecord(event, correlationId);
+
+          const outbox: OutboxRecord = {
+            id: outboxId,
+            aggregateType: flow.aggregateType,
+            aggregateId: flow.aggregateId,
+            eventId: flow.id,
+            correlationId,
+            payload: flow,
+            status: 'pending',
+            createdAt: incident.detectedAt,
+          };
+
+          const currentProjectionState: IncidentProjectionState = {
+            status: 'DETECTED',
+            description: incident.description,
+            detectedAt: incident.detectedAt.toISOString(),
+            assetId: assetId.toString(),
+            shiftId: shiftId.toString(),
+            actorId: actorId.toString(),
+          };
+
+          await transaction.incidents.save({
+            id: incident.id,
+            description: incident.description,
+            currentProjectionState,
+            createdAt: incident.detectedAt,
+          });
+          await transaction.events.save(flow);
+          await transaction.outbox.save(outbox);
+
+          return {
+            incidentId,
+            eventId,
+            outboxId,
+            recipientId:
+              currentProjectionState.assignedActorId ??
+              currentProjectionState.actorId,
+          };
+        },
+      );
+
+      await this.dependencies.createNotificationUseCase.execute({
+        recipientId: result.recipientId,
+        type: INCIDENT_DETECTED_NOTIFICATION_TYPE,
+        channel: INCIDENT_DETECTED_NOTIFICATION_CHANNEL,
+        message: INCIDENT_DETECTED_NOTIFICATION_MESSAGE,
       });
-      const event = pullExactlyOneDomainEvent(incident);
-      const flow = toFlowEventRecord(event);
 
-      const outbox: OutboxRecord = {
-        id: outboxId,
-        aggregateType: flow.aggregateType,
-        aggregateId: flow.aggregateId,
-        eventId: flow.id,
-        payload: flow,
-        status: 'pending',
-        createdAt: incident.detectedAt,
-      };
-
-      const currentProjectionState: IncidentProjectionState = {
-        status: 'DETECTED',
-        description: incident.description,
-        detectedAt: incident.detectedAt.toISOString(),
-        assetId: assetId.toString(),
-        shiftId: shiftId.toString(),
-        actorId: actorId.toString(),
-      };
-
-      await transaction.incidents.save({
-        id: incident.id,
-        description: incident.description,
-        currentProjectionState,
-        createdAt: incident.detectedAt,
-      });
-      await transaction.events.save(flow);
-      await transaction.outbox.save(outbox);
+      this.dependencies.logger.info(COMPLETED_MESSAGE);
+      this.dependencies.metrics.increment(INCIDENT_DETECT_SUCCESS_METRIC);
 
       return {
-        incidentId,
-        eventId,
-        outboxId,
-        recipientId:
-          currentProjectionState.assignedActorId ??
-          currentProjectionState.actorId,
+        incidentId: result.incidentId,
+        eventId: result.eventId,
+        outboxId: result.outboxId,
       };
-    },
-    );
-
-    await this.dependencies.createNotificationUseCase.execute({
-      recipientId: result.recipientId,
-      type: INCIDENT_DETECTED_NOTIFICATION_TYPE,
-      channel: INCIDENT_DETECTED_NOTIFICATION_CHANNEL,
-      message: INCIDENT_DETECTED_NOTIFICATION_MESSAGE,
-    });
-
-    return {
-      incidentId: result.incidentId,
-      eventId: result.eventId,
-      outboxId: result.outboxId,
-    };
+    } catch (error) {
+      this.dependencies.logger.error(FAILED_MESSAGE);
+      this.dependencies.metrics.increment(INCIDENT_DETECT_FAILURE_METRIC);
+      throw error;
+    }
   }
 }

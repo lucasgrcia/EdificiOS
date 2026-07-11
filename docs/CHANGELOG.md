@@ -6,6 +6,49 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.14.0-alpha] - 2026-07-11
+
+### Added
+
+#### Sprint 14 — Correlation ID (PR1)
+
+- `CorrelationIdProvider` en `src/shared/` con `AsyncLocalStorage`.
+- `CorrelationIdMiddleware` global: genera UUID por request, header `x-correlation-id`.
+- Disponible para Application vía `CorrelationIdProvider.get()`.
+
+#### Sprint 14 — Correlation ID propagation (PR2)
+
+- Propagación del `correlationId` del request a Event Log (`events.correlation_id`) y Outbox (`outbox.correlation_id`).
+- Migración `010_outbox_correlation_id.sql`.
+- Use cases Incident (detect, assign, start, resolve) reutilizan el UUID del request; sin generar IDs nuevos.
+
+#### Sprint 14 — Application Logger (PR3)
+
+- `ApplicationLogger` en `src/shared/logging/`: logs estructurados `{ timestamp, level, correlationId, message }`.
+- Dependencias: `CorrelationIdProvider`, `Clock`. Sin reemplazar el logger de Nest.
+- Use cases Incident: INFO al inicio y éxito; ERROR en excepciones.
+
+#### Sprint 14 — Application Metrics (PR4)
+
+- `ApplicationMetrics` en `src/shared/metrics/`: contadores en memoria (`increment`, `get`, `snapshot`, `reset`).
+- Métricas Incident: `incident.{detect|assign|start|resolve}.{success|failure}`.
+- Use cases Incident incrementan success/failure sin alterar lógica de negocio.
+
+#### Sprint 14 — Documentación y cierre (PR5)
+
+- Sprint 14 marcado como COMPLETADO en `docs/05_current_status.md`.
+- Sección **Observability** en estado del proyecto.
+- Glosario: Correlation ID, Application Logger, Structured Log, Application Metrics, Tracing, Observability.
+- `docs/architecture_reviews/sprint_14_observability.md` (Architecture Review).
+
+### Changed
+
+- Observabilidad transversal consolidada en `SharedModule`: tracing (Correlation ID), logging estructurado y métricas en memoria.
+- Trazabilidad end-to-end: request HTTP → Application → Event Log + Outbox con mismo `correlationId`.
+- `docs/architecture_backlog.md` con deuda futura Sprint 14 (Prometheus, OpenTelemetry, Grafana, métricas Notification).
+
+---
+
 ## [0.13.0-alpha] - 2026-07-11
 
 ### Added

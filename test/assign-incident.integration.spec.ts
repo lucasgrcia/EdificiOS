@@ -6,6 +6,23 @@ import {
   Transaction,
   TransactionRunner,
 } from '../src/operations/application/incident-persistence';
+import { CorrelationIdProvider } from '../src/shared/correlation-id';
+import { ApplicationLogger } from '../src/shared/logging/application-logger';
+import { ApplicationMetrics } from '../src/shared/metrics/application-metrics';
+
+function createSilentLogger(
+  correlationIdProvider: CorrelationIdProvider,
+): ApplicationLogger {
+  return new ApplicationLogger({
+    correlationIdProvider,
+    clock: {
+      now: () => new Date('2026-07-07T15:10:00.000Z'),
+    },
+    writer: {
+      write() {},
+    },
+  });
+}
 
 describe('AssignIncidentUseCase integration', () => {
   const incidentId = '00000000-0000-0000-0000-000000000101';
@@ -69,6 +86,7 @@ describe('AssignIncidentUseCase integration', () => {
       run: async (work) => work(transaction),
     };
 
+    const correlationIdProvider = new CorrelationIdProvider();
     const useCase = new AssignIncidentUseCase({
       transactionRunner,
       idGenerator: {
@@ -80,6 +98,9 @@ describe('AssignIncidentUseCase integration', () => {
       clock: {
         now: () => new Date('2026-07-07T15:10:00.000Z'),
       },
+      correlationIdProvider,
+      logger: createSilentLogger(correlationIdProvider),
+      metrics: new ApplicationMetrics(),
       createNotificationUseCase,
     });
 
@@ -232,6 +253,7 @@ describe('AssignIncidentUseCase integration', () => {
           },
         },
       };
+      const correlationIdProvider = new CorrelationIdProvider();
       const useCase = new AssignIncidentUseCase({
         transactionRunner: {
           run: async (work) => work(transaction),
@@ -245,6 +267,9 @@ describe('AssignIncidentUseCase integration', () => {
         clock: {
           now: () => new Date('2026-07-07T15:10:00.000Z'),
         },
+        correlationIdProvider,
+        logger: createSilentLogger(correlationIdProvider),
+        metrics: new ApplicationMetrics(),
         createNotificationUseCase,
       });
 

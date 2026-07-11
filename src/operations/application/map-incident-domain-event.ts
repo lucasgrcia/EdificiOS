@@ -11,21 +11,24 @@ import {
   ResolvedFlowEventRecord,
 } from './incident-persistence';
 
-export function toFlowEventRecord(event: IncidentDomainEvent): FlowEventRecord {
+export function toFlowEventRecord(
+  event: IncidentDomainEvent,
+  correlationId: string | null,
+): FlowEventRecord {
   if (event instanceof IncidentDetected) {
-    return toDetectedFlowEventRecord(event);
+    return toDetectedFlowEventRecord(event, correlationId);
   }
 
   if (event instanceof IncidentAssigned) {
-    return toAssignedFlowEventRecord(event);
+    return toAssignedFlowEventRecord(event, correlationId);
   }
 
   if (event instanceof IncidentInProgress) {
-    return toInProgressFlowEventRecord(event);
+    return toInProgressFlowEventRecord(event, correlationId);
   }
 
   if (event instanceof IncidentResolved) {
-    return toResolvedFlowEventRecord(event);
+    return toResolvedFlowEventRecord(event, correlationId);
   }
 
   throw new Error('Unsupported incident domain event.');
@@ -33,6 +36,7 @@ export function toFlowEventRecord(event: IncidentDomainEvent): FlowEventRecord {
 
 function toDetectedFlowEventRecord(
   event: IncidentDetected,
+  correlationId: string | null,
 ): DetectedFlowEventRecord {
   return {
     id: event.id,
@@ -41,7 +45,7 @@ function toDetectedFlowEventRecord(
     incidentId: event.incidentId,
     name: event.name,
     schemaVersion: 1,
-    correlationId: null,
+    correlationId,
     causationId: null,
     actorId: null,
     payload: {
@@ -55,6 +59,7 @@ function toDetectedFlowEventRecord(
 
 function toAssignedFlowEventRecord(
   event: IncidentAssigned,
+  correlationId: string | null,
 ): AssignedFlowEventRecord {
   return {
     id: event.id,
@@ -63,7 +68,7 @@ function toAssignedFlowEventRecord(
     incidentId: event.incidentId,
     name: event.name,
     schemaVersion: 1,
-    correlationId: null,
+    correlationId,
     causationId: null,
     actorId: event.actorId,
     payload: {
@@ -77,6 +82,7 @@ function toAssignedFlowEventRecord(
 
 function toInProgressFlowEventRecord(
   event: IncidentInProgress,
+  correlationId: string | null,
 ): InProgressFlowEventRecord {
   return {
     id: event.id,
@@ -85,7 +91,7 @@ function toInProgressFlowEventRecord(
     incidentId: event.incidentId,
     name: event.name,
     schemaVersion: 1,
-    correlationId: null,
+    correlationId,
     causationId: null,
     actorId: null,
     payload: {
@@ -98,6 +104,7 @@ function toInProgressFlowEventRecord(
 
 function toResolvedFlowEventRecord(
   event: IncidentResolved,
+  correlationId: string | null,
 ): ResolvedFlowEventRecord {
   return {
     id: event.id,
@@ -106,7 +113,7 @@ function toResolvedFlowEventRecord(
     incidentId: event.incidentId,
     name: event.name,
     schemaVersion: 1,
-    correlationId: null,
+    correlationId,
     causationId: null,
     actorId: null,
     payload: {

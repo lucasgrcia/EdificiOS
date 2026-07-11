@@ -227,6 +227,101 @@ Lista `activityFeed` dentro de `DashboardView`. Feed de actividad reciente mezcl
 
 ---
 
+### Correlation ID
+
+Identificador único por request HTTP que permite correlacionar logs, métricas y persistencia de una misma operación.
+
+**Módulo:** `src/shared/correlation-id.ts` + `CorrelationIdMiddleware`.
+
+**Mecanismo:** `AsyncLocalStorage`; el middleware genera UUID y lo expone vía `CorrelationIdProvider.get()`.
+
+**Propagación:** use cases Incident persisten el mismo UUID en `events.correlation_id` y `outbox.correlation_id`.
+
+**Header HTTP:** `x-correlation-id` en la respuesta.
+
+**No confundir con:** `flowId` (identificador del Domain Event en el agregado Incident).
+
+---
+
+### Application Logger
+
+Logger estructurado reutilizable para Application. No reemplaza el logger de NestJS.
+
+**Módulo:** `src/shared/logging/application-logger.ts`.
+
+**Dependencias:** `CorrelationIdProvider`, `Clock`.
+
+**Formato:** cada entrada es un objeto JSON con `timestamp`, `level`, `correlationId`, `message`. Sin texto libre.
+
+**Niveles MVP:** `INFO` (inicio y éxito), `ERROR` (excepción).
+
+---
+
+### Structured Log
+
+Entrada de log con campos tipados: `{ timestamp, level, correlationId, message }`.
+
+**No confundir con:** Event Log (tabla `events`, Domain Events de dominio) ni con logs de infraestructura NestJS.
+
+---
+
+### Application Metrics
+
+Servicio de contadores en memoria para Application.
+
+**Módulo:** `src/shared/metrics/application-metrics.ts`.
+
+**API:** `increment()`, `get()`, `snapshot()`, `reset()` (reset solo para tests).
+
+**Métricas Incident MVP:** `incident.detect.success/failure`, `incident.assign.success/failure`, `incident.start.success/failure`, `incident.resolve.success/failure`.
+
+**No es:** Prometheus, OpenTelemetry ni persistencia de series temporales.
+
+---
+
+### Tracing
+
+Capacidad de seguir una operación HTTP a través de las capas del sistema.
+
+**MVP:** implementado vía Correlation ID propagado a logs, métricas, Event Log y Outbox.
+
+**No es:** distributed tracing completo (spans, OpenTelemetry, Jaeger).
+
+---
+
+### Observability
+
+Conjunto de capacidades transversales para entender el comportamiento del sistema en runtime.
+
+**Componentes MVP (Sprint 14):**
+
+| Capa | Componente |
+|------|------------|
+| Tracing | Correlation ID |
+| Logging | Application Logger (structured logs) |
+| Metrics | Application Metrics (contadores en memoria) |
+| Persistencia | Event Log + Outbox (`correlation_id`) |
+
+**Flujo:**
+
+```
+Correlation ID → Application Logger → Application Metrics → Event Log → Outbox
+```
+
+---
+
+### Event Log vs Application Logs vs Metrics
+
+| Concepto | Qué registra | Dónde vive | Propósito |
+|----------|--------------|------------|-----------|
+| **Event Log** | Domain Events irreversibles (`workflow.flow.*`) | Tabla `events` (append-only) | Fuente de verdad del dominio (ADR-002) |
+| **Application Logs** | Hitos operativos del use case (start, success, error) | stdout JSON vía `ApplicationLogger` | Diagnóstico en runtime con `correlationId` |
+| **Application Metrics** | Contadores success/failure por operación | Memoria (`ApplicationMetrics`) | Señales agregadas de salud operativa |
+
+El Event Log **no** reemplaza logs de aplicación ni métricas. Los tres se complementan: el Event Log audita transiciones de dominio; los logs estructurados diagnostican ejecución; las métricas agregan éxito/fallo.
+
+---
+
 ### Flow
 
 El ciclo de trabajo asociado a un Incident. En el MVP no es un agregado ni una clase de dominio: es el **nombre del workflow** reflejado en eventos `workflow.flow.*` y en el parámetro `flowId` (identificador del Domain Event que registra cada transición).
@@ -405,6 +500,19 @@ GET /api/v1/health
 GET /api/v1/info
   └── GetApiInfoUseCase
         └── metadatos constantes (sin DB)
+```
+
+Observability (Sprint 14):
+
+```
+HTTP Request
+  └── CorrelationIdMiddleware
+        └── CorrelationIdProvider (ALS)
+              ├── ApplicationLogger → { timestamp, level, correlationId, message }
+              ├── ApplicationMetrics → incident.*.{success|failure}
+              └── Incident Use Cases
+                    ├── events.correlation_id
+                    └── outbox.correlation_id
 ```
 
 ---
