@@ -161,6 +161,72 @@ Una Notification **puede aparecer** en el Timeline como entrada `type: NOTIFICAT
 
 ## Conceptos transversales
 
+### Health Check
+
+Verificación de **disponibilidad técnica** del sistema. Responde si la infraestructura mínima funciona (conectividad PostgreSQL vía `SELECT 1`).
+
+**No es:** un endpoint de negocio, un dashboard ni metadatos de la API.
+
+**Módulo:** `src/health/` (independiente del bounded context `operations`).
+
+**HTTP:** `GET /api/v1/health` → `{ status, timestamp, version, checks: { database, operations } }`.
+
+**Regla MVP:** `status = UP` solo si el pool PostgreSQL responde. `checks.operations = UP` si la consulta fue exitosa (sin inspeccionar tablas ni ejecutar lógica de negocio).
+
+---
+
+### API Info
+
+Metadatos **públicos y estáticos** de la API. Describe qué es el sistema, su versión y principios arquitectónicos.
+
+**No es:** un health check ni un resumen operativo del edificio.
+
+**Módulo:** `src/info/` (independiente del bounded context `operations`).
+
+**HTTP:** `GET /api/v1/info` → `{ name, version, environment, boundedContext, architecture }`.
+
+**Regla MVP:** sin dependencias, sin PostgreSQL, sin dominio. Toda la información es constante en Application.
+
+---
+
+### Dashboard Summary
+
+Bloque `summary` dentro de `DashboardView`. Totales operativos agregados para la vista de mando.
+
+**Campos:** `totalSites`, `totalAssets`, `activeShifts`, `openIncidents`, `inProgressIncidents`, `resolvedToday`, `openWorkOrders`, `completedToday`, `pendingNotifications`.
+
+**Origen:** calculado en `GetOperationsDashboardUseCase` desde datos ya cargados por query repositories. Sin SQL nuevo.
+
+**No confundir con:** Health Check (disponibilidad técnica) ni API Info (metadatos estáticos).
+
+---
+
+### Activity Feed
+
+Lista `activityFeed` dentro de `DashboardView`. Feed de actividad reciente mezclando hechos operativos.
+
+**Entrada (`ActivityFeedEntry`):** `timestamp`, `type`, `title`, `description`, `actorId?`.
+
+**Tipos:** `EVENT`, `INCIDENT`, `WORK_ORDER`, `NOTIFICATION`.
+
+**Origen:** merge de `recentEvents`, `recentIncidents`, `recentWorkOrders`, `recentNotifications`; orden DESC; máximo 20 entradas.
+
+**No usar en dominio:** no es un agregado ni un término de Event Log. Es composición de lectura en Dashboard (distinto de **Timeline**, que es cronológico por Incident).
+
+---
+
+### Health vs Info vs Dashboard
+
+| Concepto | Pregunta que responde | Consulta DB | Bounded context |
+|----------|----------------------|-------------|-----------------|
+| **Health Check** | ¿El sistema puede operar? | Sí (`SELECT 1`) | Transversal (`health`) |
+| **API Info** | ¿Qué es esta API? | No | Transversal (`info`) |
+| **Dashboard** | ¿Qué está pasando en el edificio? | Sí (query repositories) | `operations` |
+
+**Health** verifica conectividad. **Info** describe la API. **Dashboard** resume el estado operativo (incidencias, turnos, summary, activity feed).
+
+---
+
 ### Flow
 
 El ciclo de trabajo asociado a un Incident. En el MVP no es un agregado ni una clase de dominio: es el **nombre del workflow** reflejado en eventos `workflow.flow.*` y en el parámetro `flowId` (identificador del Domain Event que registra cada transición).
@@ -326,6 +392,19 @@ GET /api/v1/operations/actors/:actorId/notifications
 GET /api/v1/operations/dashboard?actorId=…
   └── GetOperationsDashboardUseCase
         └── NotificationQueryRepository.findByRecipient()
+        └── summary + activityFeed (Sprint 13)
+```
+
+Health e Info (Sprint 13):
+
+```
+GET /api/v1/health
+  └── GetHealthUseCase
+        └── PostgresOperationsPool.query('SELECT 1')
+
+GET /api/v1/info
+  └── GetApiInfoUseCase
+        └── metadatos constantes (sin DB)
 ```
 
 ---

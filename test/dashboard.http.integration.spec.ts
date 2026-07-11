@@ -12,6 +12,17 @@ import { DashboardController } from '../src/operations/infrastructure/http/dashb
 describe('Dashboard HTTP integration', () => {
   const dashboard: DashboardView = {
     generatedAt: '2026-07-10T12:00:00.000Z',
+    summary: {
+      totalSites: 1,
+      totalAssets: 1,
+      activeShifts: 1,
+      openIncidents: 1,
+      inProgressIncidents: 0,
+      resolvedToday: 0,
+      openWorkOrders: 0,
+      completedToday: 0,
+      pendingNotifications: 0,
+    },
     totals: {
       sites: 1,
       incidents: {
@@ -83,6 +94,14 @@ describe('Dashboard HTTP integration', () => {
     recentWorkOrders: [],
     recentNotifications: [],
     notifications: [],
+    activityFeed: [
+      {
+        timestamp: new Date('2026-07-07T15:00:00.000Z'),
+        type: 'EVENT',
+        title: 'workflow.flow.detected',
+        description: 'workflow.flow.detected',
+      },
+    ],
   };
   const actorId = '00000000-0000-0000-0000-000000000040';
   const actorNotifications: NotificationView[] = [
@@ -141,13 +160,30 @@ describe('Dashboard HTTP integration', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(response.json()).toEqual(dashboard);
+      expect(response.json()).toEqual({
+        ...dashboard,
+        activityFeed: dashboard.activityFeed.map((entry) => ({
+          ...entry,
+          timestamp: entry.timestamp.toISOString(),
+        })),
+      });
       expect(getOperationsDashboardUseCase.execute).toHaveBeenCalledWith();
     });
 
     it('returns 200 OK with an empty dashboard', async () => {
       const emptyDashboard: DashboardView = {
         generatedAt: '2026-07-10T12:00:00.000Z',
+        summary: {
+          totalSites: 0,
+          totalAssets: 0,
+          activeShifts: 0,
+          openIncidents: 0,
+          inProgressIncidents: 0,
+          resolvedToday: 0,
+          openWorkOrders: 0,
+          completedToday: 0,
+          pendingNotifications: 0,
+        },
         totals: {
           sites: 0,
           incidents: {
@@ -164,6 +200,7 @@ describe('Dashboard HTTP integration', () => {
         recentWorkOrders: [],
         recentNotifications: [],
         notifications: [],
+        activityFeed: [],
       };
       getOperationsDashboardUseCase.execute.mockResolvedValueOnce(emptyDashboard);
 
@@ -253,6 +290,49 @@ describe('Dashboard HTTP integration', () => {
       expect(response.statusCode).toBe(200);
       expect(response.json().notifications).toEqual([]);
       expect(getOperationsDashboardUseCase.execute).toHaveBeenCalledWith();
+    });
+
+    it('returns dashboard summary in the response', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/operations/dashboard',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().summary).toEqual(dashboard.summary);
+    });
+
+    it('returns activityFeed in the response', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/operations/dashboard',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().activityFeed).toEqual([
+        {
+          timestamp: '2026-07-07T15:00:00.000Z',
+          type: 'EVENT',
+          title: 'workflow.flow.detected',
+          description: 'workflow.flow.detected',
+        },
+      ]);
+    });
+
+    it('returns the expected activityFeed response shape', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/api/v1/operations/dashboard',
+      });
+
+      expect(response.json().activityFeed).toEqual([
+        {
+          timestamp: expect.any(String),
+          type: expect.any(String),
+          title: expect.any(String),
+          description: expect.any(String),
+        },
+      ]);
     });
   });
 });

@@ -6,6 +6,47 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.13.0-alpha] - 2026-07-11
+
+### Added
+
+#### Sprint 13 — Dashboard Summary (PR1)
+
+- `DashboardSummary` en `DashboardView`: totales operativos (`totalSites`, `totalAssets`, `activeShifts`, `openIncidents`, `inProgressIncidents`, `resolvedToday`, `openWorkOrders`, `completedToday`, `pendingNotifications`).
+- Cálculo en `GetOperationsDashboardUseCase` desde datos ya cargados; sin SQL nuevo.
+
+#### Sprint 13 — Activity Feed (PR2)
+
+- `ActivityFeedEntry` y `activityFeed` en `DashboardView`.
+- Merge de `recentEvents`, `recentIncidents`, `recentWorkOrders`, `recentNotifications`; orden DESC; máximo 20 entradas.
+- Tipos: `EVENT`, `INCIDENT`, `WORK_ORDER`, `NOTIFICATION`.
+
+#### Sprint 13 — Health Module (PR3)
+
+- Módulo independiente `src/health/` (fuera del bounded context Operations).
+- `GetHealthUseCase`: `SELECT 1` sobre `PostgresOperationsPool` existente + `Clock`.
+- `GET /api/v1/health` → `{ status, timestamp, version, checks: { database, operations } }`.
+
+#### Sprint 13 — API Info Module (PR4)
+
+- Módulo independiente `src/info/` (sin dependencias, sin PostgreSQL).
+- `GetApiInfoUseCase`: metadatos constantes del sistema.
+- `GET /api/v1/info` → `{ name, version, environment, boundedContext, architecture }`.
+
+#### Sprint 13 — Documentación y cierre (PR5)
+
+- Sprint 13 marcado como COMPLETADO en `docs/05_current_status.md`.
+- Glosario: Health Check, API Info, Dashboard Summary, Activity Feed.
+- `docs/architecture_reviews/sprint_13_operational_endpoints.md` (Architecture Review).
+
+### Changed
+
+- Dashboard operacional enriquecido con `summary` y `activityFeed` sin modificar dominio ni query repositories.
+- Endpoints transversales (`/health`, `/info`) separados de `OperationsModule`; solo Health reutiliza el pool PostgreSQL exportado.
+- `docs/architecture_backlog.md` con deuda real Sprint 13 (versión, environment, readiness, métricas, paginación feed, optimización summary).
+
+---
+
 ## [0.12.0-alpha] - 2026-07-11
 
 ### Added

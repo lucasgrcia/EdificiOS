@@ -11,7 +11,7 @@ Este documento es la **fuente canónica** de ítems P1 y P2. `docs/05_current_st
 - No agregar ítems sin justificación vinculada a una review, ADR o Field Story.
 - Al cerrar un ítem, marcarlo como resuelto con sprint y PR.
 
-Última consolidación: 2026-07-10 (post Sprint 10).
+Última consolidación: 2026-07-11 (post Sprint 13).
 
 ---
 
@@ -245,6 +245,17 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | Almacenamiento local filesystem | `05_current_status.md` | Hasta que una Field Story exija otra cosa. |
 | SHA-256 verifica integridad, no identidad | `05_current_status.md` | Sin deduplicación por hash; dos capturas idénticas son dos Evidence distintas. |
 | Datos legacy con `site_id` huérfano | Sprint 5 Review | Migración `006` después de `004`/`005`. Bootstrap: Site primero. |
+
+### Sprint 13 — Operational Endpoints (futuro)
+
+| Ítem | Origen | Justificación |
+|------|--------|---------------|
+| Versión desde `package.json` | Sprint 13 PR3/PR4 | `0.13.0-alpha` duplicada en Health e Info como constante |
+| `environment` configurable | Sprint 13 PR4 | Valor fijo `development`; sin lectura de `NODE_ENV` |
+| Readiness / liveness separados | Sprint 13 PR3 | Un solo endpoint `/health` con `status` y `checks`; sin distinción K8s |
+| Métricas Prometheus | Sprint 13 PR3 | Sin exposición de métricas operativas ni de negocio |
+| Activity Feed paginado | Sprint 13 PR2 | Límite fijo de 20 entradas; sin cursor ni offset |
+| Dashboard Summary optimizable | Sprint 13 PR1 | Cálculo en memoria sobre datos ya cargados; sin agregación SQL dedicada |
 
 ### Sprint 12 — Notification Queries (futuro)
 

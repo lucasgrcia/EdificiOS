@@ -2,7 +2,7 @@
 
 Última actualización: 2026-07-11
 
-Sprint 12 — cerrado.
+Sprint 13 — cerrado.
 
 ---
 
@@ -13,7 +13,7 @@ Sprint 12 — cerrado.
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Tests | 509/509 OK |
+| Tests | 531/531 OK |
 | Build | OK |
 
 ---
@@ -245,6 +245,16 @@ Timeline (GetIncidentTimelineUseCase)
 | PR4 | Timeline enriquecido con entradas `NOTIFICATION` | ✔ |
 | PR5 | Documentación + Architecture Review | ✔ |
 
+### Sprint 13 — Dashboard operacional + Operational Endpoints
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | `DashboardSummary` en `GetOperationsDashboardUseCase` | ✔ |
+| PR2 | `ActivityFeedEntry` + `activityFeed` (merge DESC, máx. 20) | ✔ |
+| PR3 | `HealthModule` + `GET /api/v1/health` | ✔ |
+| PR4 | `InfoModule` + `GET /api/v1/info` | ✔ |
+| PR5 | Documentación + Architecture Review | ✔ |
+
 ---
 
 ## Funcionalidades implementadas
@@ -392,9 +402,26 @@ Mime types soportados: `image/jpeg`, `image/png`, `video/mp4`, `audio/mpeg`.
 | Get dashboard | `GET /api/v1/operations/dashboard` |
 | Get dashboard por Actor | `GET /api/v1/operations/dashboard?actorId={uuid}` |
 
-Incluye: totales por Site, `openIncidents`, `recentEvents`, `recentIncidents`, `recentWorkOrders`, `recentNotifications` (últimos 10), `notifications` (del Actor si `actorId` presente; si no → `[]`).
+Incluye: `summary` (totales operativos), totales por Site, `openIncidents`, `recentEvents`, `recentIncidents`, `recentWorkOrders`, `recentNotifications` (últimos 10), `notifications` (del Actor si `actorId` presente; si no → `[]`), `activityFeed` (últimas 20 entradas mezcladas).
 
-Estado: **operativo** (Sprint 7 + Sprint 10 PR4 + Sprint 12 PR3).
+**Dashboard Summary** (`summary`): `totalSites`, `totalAssets`, `activeShifts`, `openIncidents`, `inProgressIncidents`, `resolvedToday`, `openWorkOrders`, `completedToday`, `pendingNotifications`. Calculado en Application desde datos ya cargados.
+
+**Activity Feed** (`activityFeed`): merge de eventos, incidencias, órdenes y notificaciones recientes; orden `timestamp` DESC; máximo 20 entradas. Tipos: `EVENT`, `INCIDENT`, `WORK_ORDER`, `NOTIFICATION`.
+
+Estado: **operativo** (Sprint 7 + Sprint 10 PR4 + Sprint 12 PR3 + Sprint 13 PR1–PR2).
+
+### Operational Endpoints
+
+Endpoints transversales fuera del bounded context `operations`. No exponen lógica de negocio ni consultan agregados.
+
+| Operación | Endpoint | Módulo | Detalle |
+|-----------|----------|--------|---------|
+| Health Check | `GET /api/v1/health` | `HealthModule` | `SELECT 1` sobre pool PostgreSQL; `checks.database` y `checks.operations` |
+| API Info | `GET /api/v1/info` | `InfoModule` | Metadatos constantes; sin base de datos |
+
+**Health** responde si el sistema puede operar (conectividad DB). **Info** describe qué es la API (nombre, versión, arquitectura). **Dashboard** resume el estado operativo del edificio (incidencias, turnos, feed de actividad).
+
+Estado: **operativo** (Sprint 13 PR3–PR4).
 
 ---
 
@@ -423,7 +450,7 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 ## Tests
 
 ```
-47 test suites — 509 tests — 0 fallos
+49 test suites — 531 tests — 0 fallos
 ```
 
 | Área | Archivos |
@@ -432,7 +459,7 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 | Dominio Incident | `incident-aggregate-replay.spec.ts`, `incident-p0-guards.spec.ts` |
 | Dominio Evidence | `evidence.spec.ts` |
 | Casos de uso | `detect-incident`, `assign-incident`, `resolve-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order`, `create-notification`, `notification-query`, `get-incident-timeline`, `get-operations-dashboard` |
-| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `notification-query.http`, `dashboard.http` |
+| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `notification-query.http`, `dashboard.http`, `health.http`, `info.http` |
 | Repositorios / Query | `postgres-*-repository.integration.spec.ts`, `postgres-incident-timeline-repository.integration.spec.ts` |
 | Transacciones | `postgres-operations-transaction-runner.integration.spec.ts` |
 
@@ -442,7 +469,7 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 
 ## Arquitectura
 
-- Monolito modular, bounded context `operations`.
+- Monolito modular, bounded context `operations` + módulos transversales (`health`, `info`).
 - Clean Architecture: `domain → application → infrastructure`.
 - DDD táctico: agregados, Value Objects, Domain Events.
 - Transactional Outbox + Event Log como fuente de verdad (Incident).
@@ -450,6 +477,8 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - WorkOrder: agregado independiente; referencia Incident por identidad sin acoplamiento.
 - Notification: agregado independiente (commands) + read model `NotificationView` (queries); CQRS ligero sin eventos de dominio.
 - Timeline: read model desde tablas de lectura; enriquecido en use case con entradas `NOTIFICATION` (Sprint 12).
+- Dashboard: `summary` y `activityFeed` calculados en Application (Sprint 13).
+- Health / Info: módulos independientes de Operations; Health verifica pool PostgreSQL; Info expone metadatos constantes.
 - Query repositories: `IncidentQuery`, `EvidenceQuery`, `EventQuery`, `WorkOrderQuery`, `NotificationQuery`, `IncidentTimeline`.
 - Evidence respalda Domain Events, no Incident (ADR-006).
 - Site es agregado explícito; Asset referencia Site por identidad (ADR-007).
@@ -460,7 +489,7 @@ Documentación de decisiones: `docs/architecture_decisions/`.
 
 Glosario ubicuo: `docs/glossary.md`. Deuda arquitectónica: `docs/architecture_backlog.md`.
 
-Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`.
+Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`, `docs/architecture_reviews/sprint_13_operational_endpoints.md`.
 
 ---
 
@@ -499,4 +528,6 @@ Deuda futura Sprint 11 (Notifications): templates, canales reales, mark as read.
 
 Deuda futura Sprint 12 (Notification Queries): `findRecent(100)` en Timeline sin filtro por Incident, paginación, mark as read.
 
-Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`. Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`.
+Deuda futura Sprint 13 (Operational Endpoints): versión desde `package.json`, `environment` configurable, readiness/liveness, métricas Prometheus, Activity Feed paginado, Dashboard Summary optimizable.
+
+Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`.

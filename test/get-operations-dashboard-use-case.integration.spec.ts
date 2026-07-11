@@ -217,6 +217,17 @@ describe('GetOperationsDashboardUseCase integration', () => {
     const result = await useCase.execute();
 
     expect(result.generatedAt).toBe('2026-07-10T12:00:00.000Z');
+    expect(result.summary).toEqual({
+      totalSites: 2,
+      totalAssets: 2,
+      activeShifts: 1,
+      openIncidents: 2,
+      inProgressIncidents: 0,
+      resolvedToday: 0,
+      openWorkOrders: 1,
+      completedToday: 0,
+      pendingNotifications: 1,
+    });
     expect(result.totals).toEqual({
       sites: 2,
       incidents: {
@@ -282,6 +293,17 @@ describe('GetOperationsDashboardUseCase integration', () => {
     const result = await useCase.execute();
 
     expect(result.totals.sites).toBe(0);
+    expect(result.summary).toEqual({
+      totalSites: 0,
+      totalAssets: 0,
+      activeShifts: 0,
+      openIncidents: 0,
+      inProgressIncidents: 0,
+      resolvedToday: 0,
+      openWorkOrders: 0,
+      completedToday: 0,
+      pendingNotifications: 0,
+    });
     expect(result.sites).toEqual([]);
     expect(result.openIncidents).toEqual([]);
     expect(result.recentEvents).toEqual([]);
@@ -289,6 +311,96 @@ describe('GetOperationsDashboardUseCase integration', () => {
     expect(result.recentWorkOrders).toEqual([]);
     expect(result.recentNotifications).toEqual([]);
     expect(result.notifications).toEqual([]);
+    expect(result.activityFeed).toEqual([]);
+  });
+
+  it('builds dashboard summary from existing read models', async () => {
+    const inProgressIncident: IncidentView = {
+      id: '00000000-0000-0000-0000-000000000104',
+      description: 'Bomba en reparación.',
+      status: 'IN_PROGRESS',
+      detectedAt: '2026-07-10T08:00:00.000Z',
+      assetId: assetA.id,
+      shiftId: activeShift.id,
+      actorId: activeShift.actorId,
+      assignedAt: '2026-07-10T08:10:00.000Z',
+      assignedActorId: activeShift.actorId,
+      startedAt: '2026-07-10T09:00:00.000Z',
+      resolvedAt: null,
+      createdAt: '2026-07-10T08:00:00.000Z',
+    };
+    const resolvedTodayIncident: IncidentView = {
+      ...resolvedIncident,
+      id: '00000000-0000-0000-0000-000000000105',
+      resolvedAt: '2026-07-10T11:30:00.000Z',
+    };
+    const useCase = createUseCase({
+      incidents: [
+        detectedIncident,
+        assignedIncident,
+        inProgressIncident,
+        resolvedTodayIncident,
+      ],
+      recentWorkOrders: [
+        recentWorkOrder,
+        {
+          id: '00000000-0000-0000-0000-000000000402',
+          incidentId: inProgressIncident.id,
+          actorId: activeShift.actorId,
+          status: 'IN_PROGRESS',
+          description: 'Reparación en curso',
+          createdAt: '2026-07-10T09:30:00.000Z',
+        },
+        {
+          id: '00000000-0000-0000-0000-000000000403',
+          incidentId: resolvedTodayIncident.id,
+          actorId: activeShift.actorId,
+          status: 'COMPLETED',
+          description: 'Reparación finalizada',
+          createdAt: '2026-07-10T11:45:00.000Z',
+        },
+      ],
+      recentNotifications: [
+        recentNotification,
+        {
+          id: '00000000-0000-0000-0000-000000000502',
+          recipientId: activeShift.actorId,
+          type: 'INCIDENT_ASSIGNED',
+          message: 'Se te asignó una incidencia.',
+          createdAt: '2026-07-10T10:00:00.000Z',
+        },
+      ],
+    });
+
+    const result = await useCase.execute();
+
+    expect(result.summary).toEqual({
+      totalSites: 2,
+      totalAssets: 2,
+      activeShifts: 1,
+      openIncidents: 3,
+      inProgressIncidents: 1,
+      resolvedToday: 1,
+      openWorkOrders: 1,
+      completedToday: 1,
+      pendingNotifications: 2,
+    });
+  });
+
+  it('counts pending notifications for the selected actor in summary', async () => {
+    const useCase = createUseCase({
+      actorNotifications: [
+        actorNotificationOlder,
+        {
+          ...actorNotificationNewer,
+          status: 'PENDING',
+        },
+      ],
+    });
+
+    const result = await useCase.execute({ actorId: activeShift.actorId });
+
+    expect(result.summary.pendingNotifications).toBe(2);
   });
 
   it('returns actor notifications when actorId is provided', async () => {
@@ -343,5 +455,107 @@ describe('GetOperationsDashboardUseCase integration', () => {
 
     expect(findByRecipient).not.toHaveBeenCalled();
     expect(result.notifications).toEqual([]);
+  });
+
+  describe('activity feed', () => {
+    it('merges recent read models into a unified feed', async () => {
+      const useCase = createUseCase();
+
+      const result = await useCase.execute();
+
+      expect(result.activityFeed).toHaveLength(6);
+      expect(result.activityFeed).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: 'EVENT',
+            title: recentEvent.name,
+            description: recentEvent.name,
+          }),
+          expect.objectContaining({
+            type: 'INCIDENT',
+            title: 'Incident',
+            description: detectedIncident.description,
+          }),
+          expect.objectContaining({
+            type: 'WORK_ORDER',
+            title: 'Work Order',
+            description: recentWorkOrder.description,
+          }),
+          expect.objectContaining({
+            type: 'NOTIFICATION',
+            title: 'Notification',
+            description: recentNotification.message,
+          }),
+        ]),
+      );
+    });
+
+    it('orders activity feed by timestamp desc', async () => {
+      const useCase = createUseCase();
+
+      const result = await useCase.execute();
+
+      expect(
+        result.activityFeed.map((entry) => entry.timestamp.toISOString()),
+      ).toEqual([
+        '2026-07-08T09:00:00.000Z',
+        '2026-07-07T16:00:00.000Z',
+        '2026-07-07T15:00:05.000Z',
+        '2026-07-07T15:00:00.000Z',
+        '2026-07-07T15:00:00.000Z',
+        '2026-07-06T10:00:00.000Z',
+      ]);
+    });
+
+    it('limits activity feed to 20 items', async () => {
+      const incidents = Array.from({ length: 10 }, (_, index) => ({
+        ...detectedIncident,
+        id: `00000000-0000-0000-0000-0000000001${String(index).padStart(2, '0')}`,
+        description: `Incident ${index}`,
+        detectedAt: `2026-07-10T${String(index).padStart(2, '0')}:00:00.000Z`,
+      }));
+      const events = Array.from({ length: 10 }, (_, index) => ({
+        id: `00000000-0000-0000-0000-0000000002${String(index).padStart(2, '0')}`,
+        incidentId: incidents[index].id,
+        name: `workflow.flow.event-${index}`,
+        occurredAt: `2026-07-09T${String(index).padStart(2, '0')}:00:00.000Z`,
+        actorId: null,
+      }));
+      const workOrders = Array.from({ length: 10 }, (_, index) => ({
+        id: `00000000-0000-0000-0000-0000000003${String(index).padStart(2, '0')}`,
+        incidentId: incidents[index].id,
+        actorId: activeShift.actorId,
+        status: 'OPEN',
+        description: `Work order ${index}`,
+        createdAt: `2026-07-08T${String(index).padStart(2, '0')}:00:00.000Z`,
+      }));
+      const notifications = Array.from({ length: 10 }, (_, index) => ({
+        id: `00000000-0000-0000-0000-0000000004${String(index).padStart(2, '0')}`,
+        recipientId: activeShift.actorId,
+        type: 'INCIDENT_DETECTED',
+        message: `Notification ${index}`,
+        createdAt: `2026-07-07T${String(index).padStart(2, '0')}:00:00.000Z`,
+      }));
+      const useCase = createUseCase({
+        incidents,
+        recentEvents: events,
+        recentWorkOrders: workOrders,
+        recentNotifications: notifications,
+      });
+
+      const result = await useCase.execute();
+
+      expect(result.activityFeed).toHaveLength(20);
+    });
+
+    it('includes all four activity types in the feed', async () => {
+      const useCase = createUseCase();
+
+      const result = await useCase.execute();
+
+      expect(new Set(result.activityFeed.map((entry) => entry.type))).toEqual(
+        new Set(['EVENT', 'INCIDENT', 'WORK_ORDER', 'NOTIFICATION']),
+      );
+    });
   });
 });

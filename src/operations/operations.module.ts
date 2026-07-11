@@ -630,5 +630,6 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
         }),
     },
   ],
+  exports: [PostgresOperationsPool],
 })
 export class OperationsModule {}

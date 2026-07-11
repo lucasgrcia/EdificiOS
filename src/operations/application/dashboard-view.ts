@@ -1,3 +1,4 @@
+import { ActivityFeedEntry } from './activity-feed-entry';
 import { IncidentView } from './incident-view';
 import { EventQueryView } from './event-query-view';
 import { NotificationQueryView } from './notification-query-view';
@@ -25,8 +26,21 @@ export type DashboardSiteSummary = {
   incidents: DashboardIncidentCounts;
 };
 
+export type DashboardSummary = {
+  totalSites: number;
+  totalAssets: number;
+  activeShifts: number;
+  openIncidents: number;
+  inProgressIncidents: number;
+  resolvedToday: number;
+  openWorkOrders: number;
+  completedToday: number;
+  pendingNotifications: number;
+};
+
 export type DashboardView = {
   generatedAt: string;
+  summary: DashboardSummary;
   totals: {
     sites: number;
     incidents: DashboardIncidentCounts;
@@ -38,4 +52,5 @@ export type DashboardView = {
   recentWorkOrders: WorkOrderQueryView[];
   recentNotifications: NotificationQueryView[];
   notifications: NotificationView[];
+  activityFeed: ActivityFeedEntry[];
 };
