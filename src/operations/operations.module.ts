@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 
 import { GetOperationsDashboardUseCase } from './application/get-operations-dashboard-use-case';
 import { GetIncidentByIdUseCase } from './application/get-incident-by-id-use-case';
+import { GetIncidentTimelineUseCase } from './application/get-incident-timeline-use-case';
 import { ListEvidenceByEventUseCase } from './application/list-evidence-by-event-use-case';
 import { ListIncidentsUseCase } from './application/list-incidents-use-case';
 import { AssignIncidentUseCase } from './application/assign-incident-use-case';
@@ -64,15 +65,19 @@ import { LocalFileStorage } from './infrastructure/file-storage/local-file-stora
 import { PostgresActorRepository } from './infrastructure/persistence/postgres-actor-repository';
 import { PostgresAssetRepository } from './infrastructure/persistence/postgres-asset-repository';
 import { PostgresEventEvidenceRepository } from './infrastructure/persistence/postgres-event-evidence-repository';
+import { PostgresEventQueryRepository } from './infrastructure/persistence/postgres-event-query-repository';
 import { PostgresEvidenceQueryRepository } from './infrastructure/persistence/postgres-evidence-query-repository';
 import { PostgresEvidenceRepository } from './infrastructure/persistence/postgres-evidence-repository';
 import { PostgresIncidentQueryRepository } from './infrastructure/persistence/postgres-incident-query-repository';
+import { PostgresIncidentTimelineRepository } from './infrastructure/persistence/postgres-incident-timeline-repository';
 import { PostgresOperationsPool } from './infrastructure/persistence/postgres-operations-pool';
 import { PostgresOperationsTransactionRunner } from './infrastructure/persistence/postgres-operations-transaction-runner';
 import { PostgresShiftRepository } from './infrastructure/persistence/postgres-shift-repository';
 import { PostgresSiteRepository } from './infrastructure/persistence/postgres-site-repository';
 import { PostgresWorkOrderRepository } from './infrastructure/persistence/postgres-work-order-repository';
+import { PostgresWorkOrderQueryRepository } from './infrastructure/persistence/postgres-work-order-query-repository';
 import { PostgresNotificationRepository } from './infrastructure/persistence/postgres-notification-repository';
+import { PostgresNotificationQueryRepository } from './infrastructure/persistence/postgres-notification-query-repository';
 
 function createUseCaseDependencies(transactionRunner: TransactionRunner) {
   return {
@@ -208,6 +213,28 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
         new PostgresIncidentQueryRepository(operationsPool.pool),
     },
     {
+      provide: PostgresIncidentTimelineRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresIncidentTimelineRepository(operationsPool.pool),
+    },
+    {
+      provide: PostgresIncidentTimelineRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresIncidentTimelineRepository(operationsPool.pool),
+    },
+    {
+      provide: GetIncidentTimelineUseCase,
+      inject: [PostgresIncidentTimelineRepository],
+      useFactory: (
+        incidentTimelineRepository: PostgresIncidentTimelineRepository,
+      ) =>
+        new GetIncidentTimelineUseCase({
+          incidentTimelineRepository,
+        }),
+    },
+    {
       provide: GetIncidentByIdUseCase,
       inject: [PostgresIncidentQueryRepository],
       useFactory: (incidentQueryRepository: PostgresIncidentQueryRepository) =>
@@ -228,24 +255,51 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
         }),
     },
     {
+      provide: PostgresEventQueryRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresEventQueryRepository(operationsPool.pool),
+    },
+    {
+      provide: PostgresWorkOrderQueryRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresWorkOrderQueryRepository(operationsPool.pool),
+    },
+    {
+      provide: PostgresNotificationQueryRepository,
+      inject: [PostgresOperationsPool],
+      useFactory: (operationsPool: PostgresOperationsPool) =>
+        new PostgresNotificationQueryRepository(operationsPool.pool),
+    },
+    {
       provide: GetOperationsDashboardUseCase,
       inject: [
         PostgresSiteRepository,
         PostgresAssetRepository,
         PostgresShiftRepository,
         PostgresIncidentQueryRepository,
+        PostgresEventQueryRepository,
+        PostgresWorkOrderQueryRepository,
+        PostgresNotificationQueryRepository,
       ],
       useFactory: (
         siteRepository: PostgresSiteRepository,
         assetRepository: PostgresAssetRepository,
         shiftRepository: PostgresShiftRepository,
         incidentQueryRepository: PostgresIncidentQueryRepository,
+        eventQueryRepository: PostgresEventQueryRepository,
+        workOrderQueryRepository: PostgresWorkOrderQueryRepository,
+        notificationQueryRepository: PostgresNotificationQueryRepository,
       ) =>
         new GetOperationsDashboardUseCase({
           siteRepository,
           assetRepository,
           shiftRepository,
           incidentQueryRepository,
+          eventQueryRepository,
+          workOrderQueryRepository,
+          notificationQueryRepository,
           clock: {
             now: () => new Date(),
           },

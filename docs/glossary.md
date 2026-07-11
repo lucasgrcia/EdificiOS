@@ -180,6 +180,31 @@ Regla de negocio del edificio. Concepto de dominio futuro; no es un agregado imp
 
 ---
 
+### Timeline
+
+Vista de lectura (read model) que ordena cronológicamente los hechos operativos de un Incident. **No es un agregado.**
+
+**No usar:** ActivityFeed, AuditLog, History como nombre de dominio.
+
+**Fuentes MVP:** `events`, `event_evidences`, `work_orders`, `notifications`. Sin replay, sin `current_projection_state`, sin reconstrucción de agregados.
+
+**Entrada (`TimelineEntryView`):** `timestamp`, `type`, `description`, `actorId | null`. Sin campos adicionales.
+
+**Tipos de entrada típicos:**
+
+| Origen | `type` ejemplo |
+|--------|----------------|
+| Event Log | `workflow.flow.detected`, `.assigned`, etc. |
+| Evidencia asociada | `EVIDENCE_ASSOCIATED` |
+| WorkOrder | `WORK_ORDER_CREATED` |
+| Notification | `INCIDENT_DETECTED`, `WORK_ORDER_CREATED`, etc. |
+
+**HTTP:** `GET /api/v1/operations/incidents/:incidentId/timeline` → array plano de entradas.
+
+**Deuda conocida (P2):** correlación de `notifications` sin `incident_id`; WorkOrder solo en creación.
+
+---
+
 ### Space
 
 Espacio físico del edificio (piso, unidad, área común). Término del lenguaje ubicuo; agregado no implementado en el MVP.
@@ -226,6 +251,18 @@ DetectIncidentUseCase
   └── persistencia Incident (Event Log + Proyección + Outbox)
         └── CreateNotificationUseCase
               └── recipientId: assignedActorId ?? actorId
+```
+
+Timeline operacional de un Incident:
+
+```
+GET /api/v1/operations/incidents/:incidentId/timeline
+  └── GetIncidentTimelineUseCase
+        └── IncidentTimelineRepository
+              ├── events
+              ├── event_evidences
+              ├── work_orders
+              └── notifications
 ```
 
 ---

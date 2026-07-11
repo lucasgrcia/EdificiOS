@@ -6,6 +6,37 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.10.0-alpha] - 2026-07-10
+
+### Added
+
+#### Sprint 10 — Timeline Query Model (PR1)
+
+- `TimelineEntryView`, `IncidentTimelineView` y puerto `IncidentTimelineRepository`.
+- `PostgresIncidentTimelineRepository`: timeline desde `events`, `event_evidences`, `work_orders`, `notifications` (sin replay ni proyección).
+
+#### Sprint 10 — GetIncidentTimelineUseCase (PR2)
+
+- `GetIncidentTimelineUseCase`: delegación pura al repositorio de timeline.
+
+#### Sprint 10 — HTTP Timeline (PR3)
+
+- Endpoint `GET /api/v1/operations/incidents/:incidentId/timeline` → array de entradas `{ timestamp, type, description, actorId }`.
+
+#### Sprint 10 — Dashboard Integration (PR4)
+
+- Query repositories: `EventQueryRepository`, `WorkOrderQueryRepository`, `NotificationQueryRepository` con `findRecent()`.
+- Dashboard extendido: `recentEvents`, `recentIncidents`, `recentWorkOrders`, `recentNotifications`.
+
+### Changed
+
+- `GetOperationsDashboardUseCase` reutiliza query repositories existentes y nuevos.
+- Glosario con término `Timeline`.
+- `docs/05_current_status.md` con Sprint 10 cerrado.
+- `docs/architecture_reviews/sprint_10_timeline.md` (Architecture Review).
+
+---
+
 ## [0.9.0-alpha] - 2026-07-10
 
 ### Added

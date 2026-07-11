@@ -5,6 +5,7 @@ import {
 import { Test } from '@nestjs/testing';
 
 import { GetIncidentByIdUseCase } from '../src/operations/application/get-incident-by-id-use-case';
+import { GetIncidentTimelineUseCase } from '../src/operations/application/get-incident-timeline-use-case';
 import { IncidentView } from '../src/operations/application/incident-view';
 import { ListIncidentsUseCase } from '../src/operations/application/list-incidents-use-case';
 import { IncidentQueryController } from '../src/operations/infrastructure/http/incident-query.controller';
@@ -49,6 +50,7 @@ describe('Incident query HTTP integration', () => {
   let app: NestFastifyApplication;
   let listIncidentsUseCase: { execute: jest.Mock };
   let getIncidentByIdUseCase: { execute: jest.Mock };
+  let getIncidentTimelineUseCase: { execute: jest.Mock };
 
   beforeEach(async () => {
     listIncidentsUseCase = {
@@ -56,6 +58,19 @@ describe('Incident query HTTP integration', () => {
     };
     getIncidentByIdUseCase = {
       execute: jest.fn().mockResolvedValue(detectedView),
+    };
+    getIncidentTimelineUseCase = {
+      execute: jest.fn().mockResolvedValue({
+        incidentId,
+        entries: [
+          {
+            timestamp: '2026-07-07T15:00:00.000Z',
+            type: 'workflow.flow.detected',
+            description: 'Carlos detects a leak.',
+            actorId: null,
+          },
+        ],
+      }),
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -70,6 +85,10 @@ describe('Incident query HTTP integration', () => {
         {
           provide: GetIncidentByIdUseCase,
           useValue: getIncidentByIdUseCase,
+        },
+        {
+          provide: GetIncidentTimelineUseCase,
+          useValue: getIncidentTimelineUseCase,
         },
       ],
     }).compile();
@@ -186,6 +205,43 @@ describe('Incident query HTTP integration', () => {
 
       expect(response.statusCode).toBe(404);
       expect(response.json().message).toBe('Incident was not found.');
+    });
+  });
+
+  describe('GET /api/v1/operations/incidents/:incidentId/timeline', () => {
+    it('returns 200 OK with timeline entries only', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/v1/operations/incidents/${incidentId}/timeline`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual([
+        {
+          timestamp: '2026-07-07T15:00:00.000Z',
+          type: 'workflow.flow.detected',
+          description: 'Carlos detects a leak.',
+          actorId: null,
+        },
+      ]);
+      expect(getIncidentTimelineUseCase.execute).toHaveBeenCalledWith({
+        incidentId,
+      });
+    });
+
+    it('returns 200 OK with an empty timeline', async () => {
+      getIncidentTimelineUseCase.execute.mockResolvedValueOnce({
+        incidentId,
+        entries: [],
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/v1/operations/incidents/${incidentId}/timeline`,
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual([]);
     });
   });
 });

@@ -5,17 +5,25 @@ import {
   DashboardSiteSummary,
   DashboardView,
 } from './dashboard-view';
+import { EventQueryRepository } from './event-query-persistence';
 import { Clock } from './incident-persistence';
 import { IncidentQueryRepository } from './incident-query-persistence';
 import { IncidentView } from './incident-view';
+import { NotificationQueryRepository } from './notification-query-persistence';
 import { ShiftRepository } from './shift-persistence';
 import { SiteRepository } from './site-persistence';
+import { WorkOrderQueryRepository } from './work-order-query-persistence';
+
+const DASHBOARD_RECENT_LIMIT = 10;
 
 export type GetOperationsDashboardUseCaseDependencies = {
   siteRepository: SiteRepository;
   assetRepository: AssetRepository;
   shiftRepository: ShiftRepository;
   incidentQueryRepository: IncidentQueryRepository;
+  eventQueryRepository: EventQueryRepository;
+  workOrderQueryRepository: WorkOrderQueryRepository;
+  notificationQueryRepository: NotificationQueryRepository;
   clock: Clock;
 };
 
@@ -25,10 +33,20 @@ export class GetOperationsDashboardUseCase {
   ) {}
 
   async execute(): Promise<DashboardView> {
-    const [sites, incidents] = await Promise.all([
-      this.dependencies.siteRepository.findAll(),
-      this.dependencies.incidentQueryRepository.findAll({}),
-    ]);
+    const [sites, incidents, recentEvents, recentWorkOrders, recentNotifications] =
+      await Promise.all([
+        this.dependencies.siteRepository.findAll(),
+        this.dependencies.incidentQueryRepository.findAll({}),
+        this.dependencies.eventQueryRepository.findRecent(
+          DASHBOARD_RECENT_LIMIT,
+        ),
+        this.dependencies.workOrderQueryRepository.findRecent(
+          DASHBOARD_RECENT_LIMIT,
+        ),
+        this.dependencies.notificationQueryRepository.findRecent(
+          DASHBOARD_RECENT_LIMIT,
+        ),
+      ]);
 
     const siteSummaries: DashboardSiteSummary[] = [];
 
@@ -66,6 +84,8 @@ export class GetOperationsDashboardUseCase {
           new Date(left.detectedAt).getTime(),
       );
 
+    const recentIncidents = incidents.slice(0, DASHBOARD_RECENT_LIMIT);
+
     return {
       generatedAt: this.dependencies.clock.now().toISOString(),
       totals: {
@@ -74,6 +94,10 @@ export class GetOperationsDashboardUseCase {
       },
       sites: siteSummaries,
       openIncidents,
+      recentEvents,
+      recentIncidents,
+      recentWorkOrders,
+      recentNotifications,
     };
   }
 }

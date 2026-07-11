@@ -11,7 +11,7 @@ Este documento es la **fuente canónica** de ítems P1 y P2. `docs/05_current_st
 - No agregar ítems sin justificación vinculada a una review, ADR o Field Story.
 - Al cerrar un ítem, marcarlo como resuelto con sprint y PR.
 
-Última consolidación: 2026-07-10 (post Sprint 9).
+Última consolidación: 2026-07-10 (post Sprint 10).
 
 ---
 
@@ -250,10 +250,19 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 
 | Ítem | Origen | Justificación |
 |------|--------|---------------|
-| Lectura de notifications (GET, list by recipient) | Sprint 9 PR5 | Solo creación y persistencia implementadas; sin queries HTTP |
+| Lectura de notifications (GET, list by recipient) | Sprint 9 PR5 | Creación HTTP + dashboard `recentNotifications`; falta list by recipient |
 | Mark as read | Sprint 9 PR1 | Estado `READ` en dominio sin caso de uso ni transición |
 | Delivery providers (email, push, in-app real) | Sprint 9 PR4/PR5 | Notification es intención persistida; sin envío real |
 | Event Log enriquecido para notificaciones automáticas | Sprint 9 PR4 | Integración post-detección fuera de transacción Incident; sin evento de dominio Notification |
+
+### Sprint 10 — Timeline (futuro)
+
+| Ítem | Origen | Justificación |
+|------|--------|---------------|
+| `incident_id` en `notifications` | Sprint 10 PR1 | Correlación heurística (actores + ventana 60s) para `INCIDENT_DETECTED` |
+| Historial de transiciones WorkOrder en timeline | Sprint 10 PR1 | Solo `WORK_ORDER_CREATED`; updates no generan filas en Event Log |
+| Paginación / límite en timeline HTTP | Sprint 10 PR3 | Endpoint devuelve timeline completo sin paginar |
+| Metadata de Evidence en timeline | Sprint 10 PR1 | Solo `event_evidences`; sin lectura de tabla `evidences` |
 
 ---
 

@@ -2,7 +2,7 @@
 
 Última actualización: 2026-07-10
 
-Sprint 9 — cerrado.
+Sprint 10 — cerrado.
 
 ---
 
@@ -13,7 +13,7 @@ Sprint 9 — cerrado.
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Tests | 443/443 OK |
+| Tests | 452/452 OK |
 | Build | OK |
 
 ---
@@ -32,6 +32,7 @@ El sistema posee **ocho agregados/módulos operativos**, todos integrados en el 
 | **Actor** | Persona operativa | Shift, Incident (resolución en detección) |
 | **WorkOrder** | Orden de trabajo derivada de Incident | Incident (Application) |
 | **Notification** | Intención de notificación a un Actor | Incident (Application, post-detección) |
+| **Timeline** | Read model cronológico por Incident | `events`, `event_evidences`, `work_orders`, `notifications` |
 
 Cadena operativa completa:
 
@@ -41,6 +42,7 @@ Site → Asset → Shift → Actor
          Incident (detect)
               ├── WorkOrder (opcional)
               └── Notification (automática)
+                    └── Timeline (lectura)
 ```
 
 ---
@@ -140,6 +142,16 @@ Site → Asset → Shift → Actor
 | PR4 | Integración Incident → Notification | ✔ |
 | PR5 | HTTP `POST /notifications` | ✔ |
 
+### Sprint 10 — Timeline
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | Query Model `IncidentTimelineRepository` | ✔ |
+| PR2 | `GetIncidentTimelineUseCase` | ✔ |
+| PR3 | HTTP `GET /incidents/:incidentId/timeline` | ✔ |
+| PR4 | Dashboard: últimos eventos, incidencias, órdenes, notificaciones | ✔ |
+| PR5 | Documentación + Architecture Review | ✔ |
+
 ---
 
 ## Funcionalidades implementadas
@@ -161,6 +173,7 @@ Tras detección exitosa, el sistema crea automáticamente una Notification para 
 | Resolve | `POST /api/v1/operations/incidents/:id/resolve` | — |
 | List | `GET /api/v1/operations/incidents` | — |
 | Get by id | `GET /api/v1/operations/incidents/:id` | — |
+| Timeline | `GET /api/v1/operations/incidents/:incidentId/timeline` | — |
 
 La proyección de Incident incluye `assetId`, `shiftId` y `actorId` (Actor del Turno al momento de la detección).
 
@@ -207,9 +220,19 @@ DetectIncidentUseCase → CreateNotificationUseCase
 
 **Importante:** Notification representa intención persistida, no envío real (email, push, websocket).
 
-Estados en dominio: `PENDING`, `SENT`, `FAILED`, `READ`. Sin transiciones ni lectura HTTP en Sprint 9.
+Estados en dominio: `PENDING`, `SENT`, `FAILED`, `READ`. Sin transiciones ni mark as read.
 
-Estado: **completo** para creación y persistencia; lectura, mark as read y delivery providers quedan en backlog.
+Estado: **completo** para creación, persistencia y lectura en dashboard; mark as read y delivery providers en backlog.
+
+### Timeline
+
+| Operación | Endpoint | Detalle |
+|-----------|----------|---------|
+| Get by Incident | `GET /api/v1/operations/incidents/:incidentId/timeline` | Array `{ timestamp, type, description, actorId }` |
+
+Fuentes: `events`, `event_evidences`, `work_orders`, `notifications`. Orden cronológico ASC. Sin replay.
+
+Estado: **completo** (query model, use case, HTTP, tests).
 
 ### Site
 
@@ -266,7 +289,9 @@ Mime types soportados: `image/jpeg`, `image/png`, `video/mp4`, `audio/mpeg`.
 |-----------|----------|
 | Get dashboard | `GET /api/v1/operations/dashboard` |
 
-Estado: **operativo** (Sprint 7). Agrega métricas de Incident; no incluye aún WorkOrder ni Notification.
+Incluye: totales por Site, `openIncidents`, `recentEvents`, `recentIncidents`, `recentWorkOrders`, `recentNotifications` (últimos 10).
+
+Estado: **operativo** (Sprint 7 + Sprint 10 PR4).
 
 ---
 
@@ -295,7 +320,7 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 ## Tests
 
 ```
-41 test suites — 443 tests — 0 fallos
+43 test suites — 452 tests — 0 fallos
 ```
 
 | Área | Archivos |
@@ -303,9 +328,9 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 | Dominio Site / Asset / Shift / Actor / WorkOrder / Notification | `site.spec.ts`, `asset.spec.ts`, `shift.spec.ts`, `actor.spec.ts`, `work-order.spec.ts`, `notification.spec.ts` |
 | Dominio Incident | `incident-aggregate-replay.spec.ts`, `incident-p0-guards.spec.ts` |
 | Dominio Evidence | `evidence.spec.ts` |
-| Casos de uso | `detect-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order`, `create-notification` |
-| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http` |
-| Repositorios | `postgres-*-repository.integration.spec.ts` |
+| Casos de uso | `detect-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order`, `create-notification`, `get-incident-timeline`, `get-operations-dashboard` |
+| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `dashboard.http` |
+| Repositorios / Query | `postgres-*-repository.integration.spec.ts`, `postgres-incident-timeline-repository.integration.spec.ts` |
 | Transacciones | `postgres-operations-transaction-runner.integration.spec.ts` |
 
 Los tests no requieren PostgreSQL en ejecución (usan mocks).
@@ -321,6 +346,8 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - Site y Asset: persistencia CRUD inmutable (`register` / `rehydrate`).
 - WorkOrder: agregado independiente; referencia Incident por identidad sin acoplamiento.
 - Notification: agregado independiente; intención persistida sin delivery real; integración post-transacción desde `DetectIncidentUseCase`.
+- Timeline: read model desde tablas de lectura; sin replay ni proyección Incident.
+- Query repositories: `IncidentQuery`, `EvidenceQuery`, `EventQuery`, `WorkOrderQuery`, `NotificationQuery`, `IncidentTimeline`.
 - Evidence respalda Domain Events, no Incident (ADR-006).
 - Site es agregado explícito; Asset referencia Site por identidad (ADR-007).
 - Incident requiere Asset + Shift activo del Site; el Actor se resuelve desde el Shift.
@@ -344,7 +371,8 @@ Glosario ubicuo: `docs/glossary.md`. Deuda arquitectónica: `docs/architecture_b
 - Domain Events en WorkOrder (Sprint 8)
 - Domain Events en Notification (Sprint 9)
 - Envío real de notificaciones (email, push, websocket)
-- Lectura HTTP de notifications y mark as read
+- Mark as read de notifications
+- Paginación en timeline HTTP
 
 ---
 
@@ -360,6 +388,6 @@ Resumen de ítems P1 activos:
 - Concurrencia optimista y TOCTOU
 - Proyecciones legacy, errores HTTP, tests HTTP de Incident
 
-Deuda futura Sprint 9 (Notification): lectura, mark as read, delivery providers, Event Log enriquecido.
+Deuda futura Sprint 10 (Timeline): correlación Notification, historial WorkOrder, paginación.
 
-Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`.
+Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`. Architecture Review: `docs/architecture_reviews/sprint_10_timeline.md`.

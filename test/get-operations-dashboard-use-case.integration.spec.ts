@@ -95,11 +95,37 @@ describe('GetOperationsDashboardUseCase integration', () => {
     createdAt: '2026-07-08T09:00:00.000Z',
   };
 
+  const recentEvent = {
+    id: '00000000-0000-0000-0000-000000000201',
+    incidentId: detectedIncident.id,
+    name: 'workflow.flow.detected',
+    occurredAt: '2026-07-07T15:00:00.000Z',
+    actorId: null,
+  };
+  const recentWorkOrder = {
+    id: '00000000-0000-0000-0000-000000000401',
+    incidentId: detectedIncident.id,
+    actorId: activeShift.actorId,
+    status: 'OPEN',
+    description: 'Reparar bomba principal',
+    createdAt: '2026-07-07T16:00:00.000Z',
+  };
+  const recentNotification = {
+    id: '00000000-0000-0000-0000-000000000501',
+    recipientId: activeShift.actorId,
+    type: 'INCIDENT_DETECTED',
+    message: 'Se detectó una nueva incidencia.',
+    createdAt: '2026-07-07T15:00:05.000Z',
+  };
+
   function createUseCase(options?: {
     sites?: SiteRecord[];
     incidents?: IncidentView[];
     assetsBySite?: Record<string, AssetRecord[]>;
     activeShiftsBySite?: Record<string, ShiftRecord[]>;
+    recentEvents?: typeof recentEvent[];
+    recentWorkOrders?: typeof recentWorkOrder[];
+    recentNotifications?: typeof recentNotification[];
   }) {
     const sites = options?.sites ?? [siteA, siteB];
     const incidents = options?.incidents ?? [
@@ -144,6 +170,16 @@ describe('GetOperationsDashboardUseCase integration', () => {
       incidentQueryRepository: {
         findById: async () => null,
         findAll: async () => incidents,
+      },
+      eventQueryRepository: {
+        findRecent: async () => options?.recentEvents ?? [recentEvent],
+      },
+      workOrderQueryRepository: {
+        findRecent: async () => options?.recentWorkOrders ?? [recentWorkOrder],
+      },
+      notificationQueryRepository: {
+        findRecent: async () =>
+          options?.recentNotifications ?? [recentNotification],
       },
       clock: {
         now: () => generatedAt,
@@ -199,12 +235,23 @@ describe('GetOperationsDashboardUseCase integration', () => {
       assignedIncident,
       detectedIncident,
     ]);
+    expect(result.recentEvents).toEqual([recentEvent]);
+    expect(result.recentIncidents).toEqual([
+      detectedIncident,
+      resolvedIncident,
+      assignedIncident,
+    ]);
+    expect(result.recentWorkOrders).toEqual([recentWorkOrder]);
+    expect(result.recentNotifications).toEqual([recentNotification]);
   });
 
   it('returns empty summaries when there are no sites', async () => {
     const useCase = createUseCase({
       sites: [],
       incidents: [],
+      recentEvents: [],
+      recentWorkOrders: [],
+      recentNotifications: [],
     });
 
     const result = await useCase.execute();
@@ -212,5 +259,9 @@ describe('GetOperationsDashboardUseCase integration', () => {
     expect(result.totals.sites).toBe(0);
     expect(result.sites).toEqual([]);
     expect(result.openIncidents).toEqual([]);
+    expect(result.recentEvents).toEqual([]);
+    expect(result.recentIncidents).toEqual([]);
+    expect(result.recentWorkOrders).toEqual([]);
+    expect(result.recentNotifications).toEqual([]);
   });
 });

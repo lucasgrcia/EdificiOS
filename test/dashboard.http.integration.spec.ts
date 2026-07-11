@@ -54,6 +54,33 @@ describe('Dashboard HTTP integration', () => {
         createdAt: '2026-07-07T15:00:00.000Z',
       },
     ],
+    recentEvents: [
+      {
+        id: '00000000-0000-0000-0000-000000000201',
+        incidentId: '00000000-0000-0000-0000-000000000101',
+        name: 'workflow.flow.detected',
+        occurredAt: '2026-07-07T15:00:00.000Z',
+        actorId: null,
+      },
+    ],
+    recentIncidents: [
+      {
+        id: '00000000-0000-0000-0000-000000000101',
+        description: 'Carlos detects a leak.',
+        status: 'DETECTED',
+        detectedAt: '2026-07-07T15:00:00.000Z',
+        assetId: '00000000-0000-0000-0000-000000000001',
+        shiftId: '00000000-0000-0000-0000-000000000030',
+        actorId: '00000000-0000-0000-0000-000000000040',
+        assignedAt: null,
+        assignedActorId: null,
+        startedAt: null,
+        resolvedAt: null,
+        createdAt: '2026-07-07T15:00:00.000Z',
+      },
+    ],
+    recentWorkOrders: [],
+    recentNotifications: [],
   };
 
   let app: NestFastifyApplication;
@@ -109,6 +136,10 @@ describe('Dashboard HTTP integration', () => {
         },
         sites: [],
         openIncidents: [],
+        recentEvents: [],
+        recentIncidents: [],
+        recentWorkOrders: [],
+        recentNotifications: [],
       };
       getOperationsDashboardUseCase.execute.mockResolvedValueOnce(emptyDashboard);
 
