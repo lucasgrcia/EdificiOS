@@ -1,8 +1,8 @@
 # Estado actual del proyecto
 
-Última actualización: 2026-07-10
+Última actualización: 2026-07-11
 
-Sprint 10 — cerrado.
+Sprint 11 — cerrado.
 
 ---
 
@@ -13,7 +13,7 @@ Sprint 10 — cerrado.
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Tests | 452/452 OK |
+| Tests | 478/478 OK |
 | Build | OK |
 
 ---
@@ -31,7 +31,7 @@ El sistema posee **ocho agregados/módulos operativos**, todos integrados en el 
 | **Site** | Edificio explícito | Asset, Shift, Actor |
 | **Actor** | Persona operativa | Shift, Incident (resolución en detección) |
 | **WorkOrder** | Orden de trabajo derivada de Incident | Incident (Application) |
-| **Notification** | Intención de notificación a un Actor | Incident (Application, post-detección) |
+| **Notification** | Mensaje operativo automático a un Actor | Application (post-persistencia); cinco tipos operativos |
 | **Timeline** | Read model cronológico por Incident | `events`, `event_evidences`, `work_orders`, `notifications` |
 
 Cadena operativa completa:
@@ -41,9 +41,49 @@ Site → Asset → Shift → Actor
               ↓
          Incident (detect)
               ├── WorkOrder (opcional)
-              └── Notification (automática)
+              └── Notifications automáticas (ciclo completo)
                     └── Timeline (lectura)
 ```
+
+---
+
+## Notification Lifecycle
+
+Todas las Notifications se crean **exclusivamente desde Application**, nunca desde dominio. El patrón es siempre: persistencia exitosa → `CreateNotificationUseCase.execute()` → return.
+
+```
+Incident.detect()
+        ↓
+Notification INCIDENT_DETECTED
+
+Incident.assign()
+        ↓
+Notification INCIDENT_ASSIGNED
+
+WorkOrder.start()
+        ↓
+Notification WORK_ORDER_STARTED
+
+WorkOrder.complete()
+        ↓
+Notification WORK_ORDER_COMPLETED
+
+Incident.resolve()
+        ↓
+Notification INCIDENT_RESOLVED
+```
+
+| Type | Use case | Canal | Cuándo |
+|------|----------|-------|--------|
+| `INCIDENT_DETECTED` | `DetectIncidentUseCase` | `IN_APP` | Tras detección exitosa |
+| `INCIDENT_ASSIGNED` | `AssignIncidentUseCase` | `IN_APP` | Tras asignación exitosa |
+| `WORK_ORDER_STARTED` | `StartWorkOrderUseCase` | `IN_APP` | Tras inicio exitoso |
+| `WORK_ORDER_COMPLETED` | `CompleteWorkOrderUseCase` | `IN_APP` | Tras completado exitoso |
+| `INCIDENT_RESOLVED` | `ResolveIncidentUseCase` | `IN_APP` | Tras resolución exitosa |
+
+Si falla cualquier validación, transición o persistencia, **no** se genera Notification.
+
+`CreateNotificationUseCase` es el punto único de creación (manual vía HTTP o automática vía integraciones).
 
 ---
 
@@ -152,6 +192,16 @@ Site → Asset → Shift → Actor
 | PR4 | Dashboard: últimos eventos, incidencias, órdenes, notificaciones | ✔ |
 | PR5 | Documentación + Architecture Review | ✔ |
 
+### Sprint 11 — Automatización operacional de Notifications
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | `AssignIncidentUseCase` → Notification `INCIDENT_ASSIGNED` | ✔ |
+| PR2 | `StartWorkOrderUseCase` → Notification `WORK_ORDER_STARTED` | ✔ |
+| PR3 | `CompleteWorkOrderUseCase` → Notification `WORK_ORDER_COMPLETED` | ✔ |
+| PR4 | `ResolveIncidentUseCase` → Notification `INCIDENT_RESOLVED` | ✔ |
+| PR5 | Documentación + Architecture Review | ✔ |
+
 ---
 
 ## Funcionalidades implementadas
@@ -165,6 +215,8 @@ Site → Asset → Shift → Actor
 El sistema resuelve automáticamente `actorId` desde el Actor del Shift activo. El cliente envía solo `assetId` y `description`.
 
 Tras detección exitosa, el sistema crea automáticamente una Notification para el Actor destinatario (`assignedActorId ?? actorId`). La integración vive en Application; Incident no conoce Notification.
+
+Tras asignación y resolución exitosas, el sistema crea Notifications automáticas (`INCIDENT_ASSIGNED`, `INCIDENT_RESOLVED`). Mismo patrón: post-transacción, vía `CreateNotificationUseCase`.
 
 | Operación | Endpoint | Requisito |
 |-----------|----------|-----------|
@@ -187,8 +239,8 @@ Un Incident puede generar WorkOrders. La relación vive en Application; el agreg
 | Create from Incident | `POST /api/v1/operations/incidents/:incidentId/work-orders` | Incident existente; resuelve `actorId` desde proyección |
 | Get by id | `GET /api/v1/operations/work-orders/:id` | — |
 | List by Incident | `GET /api/v1/operations/incidents/:incidentId/work-orders` | — |
-| Start | `POST /api/v1/operations/work-orders/:id/start` | Estado `OPEN` |
-| Complete | `POST /api/v1/operations/work-orders/:id/complete` | Estado `IN_PROGRESS` |
+| Start | `POST /api/v1/operations/work-orders/:id/start` | Estado `OPEN`; Notification `WORK_ORDER_STARTED` automática |
+| Complete | `POST /api/v1/operations/work-orders/:id/complete` | Estado `IN_PROGRESS`; Notification `WORK_ORDER_COMPLETED` automática |
 | Cancel | `POST /api/v1/operations/work-orders/:id/cancel` | Estado `OPEN` o `IN_PROGRESS` |
 
 Regla: un solo WorkOrder `OPEN` por Incident.
@@ -203,26 +255,31 @@ Resolución de actor: `assignedActorId ?? actorId` desde la proyección del Inci
 
 Estado: **completo** (dominio, persistencia, application, HTTP e integración Incident).
 
+Estado: **completo** (dominio, persistencia, application, HTTP, integración Incident y notificaciones automáticas start/complete).
+
 ### Notification
 
 | Operación | Endpoint | Requisito |
 |-----------|----------|-----------|
 | Create | `POST /api/v1/operations/notifications` | `recipientId`, `type`, `channel`, `message` |
 
-Notificación automática al detectar Incident (sin endpoint adicional):
+Notificaciones automáticas (sin endpoint adicional); todas vía `CreateNotificationUseCase` post-persistencia:
 
-```
-DetectIncidentUseCase → CreateNotificationUseCase
-  type: INCIDENT_DETECTED
-  channel: IN_APP
-  recipientId: assignedActorId ?? actorId
-```
+| Type | Origen | recipientId |
+|------|--------|-------------|
+| `INCIDENT_DETECTED` | `DetectIncidentUseCase` | `assignedActorId ?? actorId` |
+| `INCIDENT_ASSIGNED` | `AssignIncidentUseCase` | Actor asignado |
+| `INCIDENT_RESOLVED` | `ResolveIncidentUseCase` | `assignedActorId ?? actorId` |
+| `WORK_ORDER_STARTED` | `StartWorkOrderUseCase` | `actorId` del WorkOrder |
+| `WORK_ORDER_COMPLETED` | `CompleteWorkOrderUseCase` | `actorId` del WorkOrder |
 
-**Importante:** Notification representa intención persistida, no envío real (email, push, websocket).
+Canal automático: `IN_APP`.
+
+**Importante:** Notification representa intención persistida, no envío real (email, push, websocket). No participa del Event Log ni modifica agregados operativos.
 
 Estados en dominio: `PENDING`, `SENT`, `FAILED`, `READ`. Sin transiciones ni mark as read.
 
-Estado: **completo** para creación, persistencia y lectura en dashboard; mark as read y delivery providers en backlog.
+Estado: **completo** para creación automática del ciclo operativo, persistencia manual HTTP y lectura en dashboard; templates, query API y delivery en backlog.
 
 ### Timeline
 
@@ -320,7 +377,7 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 ## Tests
 
 ```
-43 test suites — 452 tests — 0 fallos
+45 test suites — 478 tests — 0 fallos
 ```
 
 | Área | Archivos |
@@ -328,7 +385,7 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 | Dominio Site / Asset / Shift / Actor / WorkOrder / Notification | `site.spec.ts`, `asset.spec.ts`, `shift.spec.ts`, `actor.spec.ts`, `work-order.spec.ts`, `notification.spec.ts` |
 | Dominio Incident | `incident-aggregate-replay.spec.ts`, `incident-p0-guards.spec.ts` |
 | Dominio Evidence | `evidence.spec.ts` |
-| Casos de uso | `detect-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order`, `create-notification`, `get-incident-timeline`, `get-operations-dashboard` |
+| Casos de uso | `detect-incident`, `assign-incident`, `resolve-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order`, `create-notification`, `get-incident-timeline`, `get-operations-dashboard` |
 | HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `dashboard.http` |
 | Repositorios / Query | `postgres-*-repository.integration.spec.ts`, `postgres-incident-timeline-repository.integration.spec.ts` |
 | Transacciones | `postgres-operations-transaction-runner.integration.spec.ts` |
@@ -345,17 +402,19 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - Transactional Outbox + Event Log como fuente de verdad (Incident).
 - Site y Asset: persistencia CRUD inmutable (`register` / `rehydrate`).
 - WorkOrder: agregado independiente; referencia Incident por identidad sin acoplamiento.
-- Notification: agregado independiente; intención persistida sin delivery real; integración post-transacción desde `DetectIncidentUseCase`.
+- Notification: agregado independiente; intención persistida sin delivery real; cinco integraciones automáticas post-persistencia desde Application vía `CreateNotificationUseCase`.
 - Timeline: read model desde tablas de lectura; sin replay ni proyección Incident.
 - Query repositories: `IncidentQuery`, `EvidenceQuery`, `EventQuery`, `WorkOrderQuery`, `NotificationQuery`, `IncidentTimeline`.
 - Evidence respalda Domain Events, no Incident (ADR-006).
 - Site es agregado explícito; Asset referencia Site por identidad (ADR-007).
 - Incident requiere Asset + Shift activo del Site; el Actor se resuelve desde el Shift.
-- Incident puede generar WorkOrders y Notifications; las integraciones viven en Application, no en el dominio de Incident.
+- Incident puede generar WorkOrders y Notifications; las integraciones viven en Application, no en el dominio de Incident ni WorkOrder.
 
 Documentación de decisiones: `docs/architecture_decisions/`.
 
 Glosario ubicuo: `docs/glossary.md`. Deuda arquitectónica: `docs/architecture_backlog.md`.
+
+Architecture Review Sprint 11: `docs/architecture_reviews/sprint_11_notifications.md`.
 
 ---
 
@@ -390,4 +449,6 @@ Resumen de ítems P1 activos:
 
 Deuda futura Sprint 10 (Timeline): correlación Notification, historial WorkOrder, paginación.
 
-Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`. Architecture Review: `docs/architecture_reviews/sprint_10_timeline.md`.
+Deuda futura Sprint 11 (Notifications): templates, canales reales, query API, read model, mark as read.
+
+Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`. Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`.

@@ -136,6 +136,20 @@ describe('Work order use cases integration', () => {
     };
   }
 
+  function createStartDependencies(
+    workOrderRepository: ReturnType<typeof createWorkOrderRepository>,
+    createNotificationUseCase = {
+      execute: jest.fn().mockResolvedValue({
+        notificationId: '00000000-0000-0000-0000-000000000501',
+      }),
+    },
+  ) {
+    return {
+      workOrderRepository,
+      createNotificationUseCase,
+    };
+  }
+
   describe('CreateWorkOrderUseCase', () => {
     it('creates a work order when incident and actor exist', async () => {
       const workOrderRepository = createWorkOrderRepository();
@@ -223,7 +237,9 @@ describe('Work order use cases integration', () => {
     it('starts an open work order', async () => {
       const workOrderRepository = createWorkOrderRepository();
       workOrderRepository.workOrders.set(workOrderId, openWorkOrder);
-      const useCase = new StartWorkOrderUseCase({ workOrderRepository });
+      const useCase = new StartWorkOrderUseCase(
+        createStartDependencies(workOrderRepository),
+      );
 
       const result = await useCase.execute({ workOrderId });
 
@@ -240,13 +256,21 @@ describe('Work order use cases integration', () => {
 
     it('rejects starting a work order that does not exist', async () => {
       const workOrderRepository = createWorkOrderRepository();
-      const useCase = new StartWorkOrderUseCase({ workOrderRepository });
+      const createNotificationUseCase = {
+        execute: jest.fn().mockResolvedValue({
+          notificationId: '00000000-0000-0000-0000-000000000501',
+        }),
+      };
+      const useCase = new StartWorkOrderUseCase(
+        createStartDependencies(workOrderRepository, createNotificationUseCase),
+      );
 
       await expect(
         useCase.execute({ workOrderId: 'missing-work-order' }),
       ).rejects.toBeInstanceOf(WorkOrderNotFoundError);
 
       expect(workOrderRepository.update).not.toHaveBeenCalled();
+      expect(createNotificationUseCase.execute).not.toHaveBeenCalled();
     });
 
     it('rejects starting a work order that is not open', async () => {
@@ -255,13 +279,140 @@ describe('Work order use cases integration', () => {
         ...openWorkOrder,
         status: 'IN_PROGRESS',
       });
-      const useCase = new StartWorkOrderUseCase({ workOrderRepository });
+      const createNotificationUseCase = {
+        execute: jest.fn().mockResolvedValue({
+          notificationId: '00000000-0000-0000-0000-000000000501',
+        }),
+      };
+      const useCase = new StartWorkOrderUseCase(
+        createStartDependencies(workOrderRepository, createNotificationUseCase),
+      );
 
       await expect(useCase.execute({ workOrderId })).rejects.toThrow(
         'Work order can only be started from OPEN status.',
       );
 
       expect(workOrderRepository.update).not.toHaveBeenCalled();
+      expect(createNotificationUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    describe('Work order start notification integration', () => {
+      it('creates a notification when work order start succeeds', async () => {
+        const workOrderRepository = createWorkOrderRepository();
+        workOrderRepository.workOrders.set(workOrderId, openWorkOrder);
+        const createNotificationUseCase = {
+          execute: jest.fn().mockResolvedValue({
+            notificationId: '00000000-0000-0000-0000-000000000501',
+          }),
+        };
+        const useCase = new StartWorkOrderUseCase(
+          createStartDependencies(
+            workOrderRepository,
+            createNotificationUseCase,
+          ),
+        );
+
+        await useCase.execute({ workOrderId });
+
+        expect(createNotificationUseCase.execute).toHaveBeenCalledTimes(1);
+      });
+
+      it('creates notification for the work order actor', async () => {
+        const workOrderRepository = createWorkOrderRepository();
+        workOrderRepository.workOrders.set(workOrderId, openWorkOrder);
+        const createNotificationUseCase = {
+          execute: jest.fn().mockResolvedValue({
+            notificationId: '00000000-0000-0000-0000-000000000501',
+          }),
+        };
+        const useCase = new StartWorkOrderUseCase(
+          createStartDependencies(
+            workOrderRepository,
+            createNotificationUseCase,
+          ),
+        );
+
+        await useCase.execute({ workOrderId });
+
+        expect(createNotificationUseCase.execute).toHaveBeenCalledWith(
+          expect.objectContaining({
+            recipientId: actorId,
+          }),
+        );
+      });
+
+      it('creates notification with type WORK_ORDER_STARTED', async () => {
+        const workOrderRepository = createWorkOrderRepository();
+        workOrderRepository.workOrders.set(workOrderId, openWorkOrder);
+        const createNotificationUseCase = {
+          execute: jest.fn().mockResolvedValue({
+            notificationId: '00000000-0000-0000-0000-000000000501',
+          }),
+        };
+        const useCase = new StartWorkOrderUseCase(
+          createStartDependencies(
+            workOrderRepository,
+            createNotificationUseCase,
+          ),
+        );
+
+        await useCase.execute({ workOrderId });
+
+        expect(createNotificationUseCase.execute).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'WORK_ORDER_STARTED',
+          }),
+        );
+      });
+
+      it('creates notification with channel IN_APP', async () => {
+        const workOrderRepository = createWorkOrderRepository();
+        workOrderRepository.workOrders.set(workOrderId, openWorkOrder);
+        const createNotificationUseCase = {
+          execute: jest.fn().mockResolvedValue({
+            notificationId: '00000000-0000-0000-0000-000000000501',
+          }),
+        };
+        const useCase = new StartWorkOrderUseCase(
+          createStartDependencies(
+            workOrderRepository,
+            createNotificationUseCase,
+          ),
+        );
+
+        await useCase.execute({ workOrderId });
+
+        expect(createNotificationUseCase.execute).toHaveBeenCalledWith(
+          expect.objectContaining({
+            channel: 'IN_APP',
+          }),
+        );
+      });
+
+      it('creates notification with the work order start message', async () => {
+        const workOrderRepository = createWorkOrderRepository();
+        workOrderRepository.workOrders.set(workOrderId, openWorkOrder);
+        const createNotificationUseCase = {
+          execute: jest.fn().mockResolvedValue({
+            notificationId: '00000000-0000-0000-0000-000000000501',
+          }),
+        };
+        const useCase = new StartWorkOrderUseCase(
+          createStartDependencies(
+            workOrderRepository,
+            createNotificationUseCase,
+          ),
+        );
+
+        await useCase.execute({ workOrderId });
+
+        expect(createNotificationUseCase.execute).toHaveBeenCalledWith({
+          recipientId: actorId,
+          type: 'WORK_ORDER_STARTED',
+          channel: 'IN_APP',
+          message: 'Comenzó una orden de trabajo asignada a ti.',
+        });
+      });
     });
   });
 
@@ -272,7 +423,9 @@ describe('Work order use cases integration', () => {
         ...openWorkOrder,
         status: 'IN_PROGRESS',
       });
-      const useCase = new CompleteWorkOrderUseCase({ workOrderRepository });
+      const useCase = new CompleteWorkOrderUseCase(
+        createStartDependencies(workOrderRepository),
+      );
 
       const result = await useCase.execute({ workOrderId });
 
@@ -289,25 +442,175 @@ describe('Work order use cases integration', () => {
 
     it('rejects completing a work order that does not exist', async () => {
       const workOrderRepository = createWorkOrderRepository();
-      const useCase = new CompleteWorkOrderUseCase({ workOrderRepository });
+      const createNotificationUseCase = {
+        execute: jest.fn().mockResolvedValue({
+          notificationId: '00000000-0000-0000-0000-000000000501',
+        }),
+      };
+      const useCase = new CompleteWorkOrderUseCase(
+        createStartDependencies(workOrderRepository, createNotificationUseCase),
+      );
 
       await expect(
         useCase.execute({ workOrderId: 'missing-work-order' }),
       ).rejects.toBeInstanceOf(WorkOrderNotFoundError);
 
       expect(workOrderRepository.update).not.toHaveBeenCalled();
+      expect(createNotificationUseCase.execute).not.toHaveBeenCalled();
     });
 
     it('rejects completing a work order that is not in progress', async () => {
       const workOrderRepository = createWorkOrderRepository();
       workOrderRepository.workOrders.set(workOrderId, openWorkOrder);
-      const useCase = new CompleteWorkOrderUseCase({ workOrderRepository });
+      const createNotificationUseCase = {
+        execute: jest.fn().mockResolvedValue({
+          notificationId: '00000000-0000-0000-0000-000000000501',
+        }),
+      };
+      const useCase = new CompleteWorkOrderUseCase(
+        createStartDependencies(workOrderRepository, createNotificationUseCase),
+      );
 
       await expect(useCase.execute({ workOrderId })).rejects.toThrow(
         'Work order can only be completed from IN_PROGRESS status.',
       );
 
       expect(workOrderRepository.update).not.toHaveBeenCalled();
+      expect(createNotificationUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    describe('Work order complete notification integration', () => {
+      it('creates a notification when work order complete succeeds', async () => {
+        const workOrderRepository = createWorkOrderRepository();
+        workOrderRepository.workOrders.set(workOrderId, {
+          ...openWorkOrder,
+          status: 'IN_PROGRESS',
+        });
+        const createNotificationUseCase = {
+          execute: jest.fn().mockResolvedValue({
+            notificationId: '00000000-0000-0000-0000-000000000501',
+          }),
+        };
+        const useCase = new CompleteWorkOrderUseCase(
+          createStartDependencies(
+            workOrderRepository,
+            createNotificationUseCase,
+          ),
+        );
+
+        await useCase.execute({ workOrderId });
+
+        expect(createNotificationUseCase.execute).toHaveBeenCalledTimes(1);
+      });
+
+      it('creates notification for the work order actor', async () => {
+        const workOrderRepository = createWorkOrderRepository();
+        workOrderRepository.workOrders.set(workOrderId, {
+          ...openWorkOrder,
+          status: 'IN_PROGRESS',
+        });
+        const createNotificationUseCase = {
+          execute: jest.fn().mockResolvedValue({
+            notificationId: '00000000-0000-0000-0000-000000000501',
+          }),
+        };
+        const useCase = new CompleteWorkOrderUseCase(
+          createStartDependencies(
+            workOrderRepository,
+            createNotificationUseCase,
+          ),
+        );
+
+        await useCase.execute({ workOrderId });
+
+        expect(createNotificationUseCase.execute).toHaveBeenCalledWith(
+          expect.objectContaining({
+            recipientId: actorId,
+          }),
+        );
+      });
+
+      it('creates notification with type WORK_ORDER_COMPLETED', async () => {
+        const workOrderRepository = createWorkOrderRepository();
+        workOrderRepository.workOrders.set(workOrderId, {
+          ...openWorkOrder,
+          status: 'IN_PROGRESS',
+        });
+        const createNotificationUseCase = {
+          execute: jest.fn().mockResolvedValue({
+            notificationId: '00000000-0000-0000-0000-000000000501',
+          }),
+        };
+        const useCase = new CompleteWorkOrderUseCase(
+          createStartDependencies(
+            workOrderRepository,
+            createNotificationUseCase,
+          ),
+        );
+
+        await useCase.execute({ workOrderId });
+
+        expect(createNotificationUseCase.execute).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'WORK_ORDER_COMPLETED',
+          }),
+        );
+      });
+
+      it('creates notification with channel IN_APP', async () => {
+        const workOrderRepository = createWorkOrderRepository();
+        workOrderRepository.workOrders.set(workOrderId, {
+          ...openWorkOrder,
+          status: 'IN_PROGRESS',
+        });
+        const createNotificationUseCase = {
+          execute: jest.fn().mockResolvedValue({
+            notificationId: '00000000-0000-0000-0000-000000000501',
+          }),
+        };
+        const useCase = new CompleteWorkOrderUseCase(
+          createStartDependencies(
+            workOrderRepository,
+            createNotificationUseCase,
+          ),
+        );
+
+        await useCase.execute({ workOrderId });
+
+        expect(createNotificationUseCase.execute).toHaveBeenCalledWith(
+          expect.objectContaining({
+            channel: 'IN_APP',
+          }),
+        );
+      });
+
+      it('creates notification with the work order complete message', async () => {
+        const workOrderRepository = createWorkOrderRepository();
+        workOrderRepository.workOrders.set(workOrderId, {
+          ...openWorkOrder,
+          status: 'IN_PROGRESS',
+        });
+        const createNotificationUseCase = {
+          execute: jest.fn().mockResolvedValue({
+            notificationId: '00000000-0000-0000-0000-000000000501',
+          }),
+        };
+        const useCase = new CompleteWorkOrderUseCase(
+          createStartDependencies(
+            workOrderRepository,
+            createNotificationUseCase,
+          ),
+        );
+
+        await useCase.execute({ workOrderId });
+
+        expect(createNotificationUseCase.execute).toHaveBeenCalledWith({
+          recipientId: actorId,
+          type: 'WORK_ORDER_COMPLETED',
+          channel: 'IN_APP',
+          message: 'Finalizaste una orden de trabajo.',
+        });
+      });
     });
   });
 
@@ -392,10 +695,12 @@ describe('Work order use cases integration', () => {
       const createUseCase = new CreateWorkOrderUseCase(
         createCreateDependencies(workOrderRepository),
       );
-      const startUseCase = new StartWorkOrderUseCase({ workOrderRepository });
-      const completeUseCase = new CompleteWorkOrderUseCase({
-        workOrderRepository,
-      });
+      const startUseCase = new StartWorkOrderUseCase(
+        createStartDependencies(workOrderRepository),
+      );
+      const completeUseCase = new CompleteWorkOrderUseCase(
+        createStartDependencies(workOrderRepository),
+      );
 
       const created = await createUseCase.execute(createCommand);
       const started = await startUseCase.execute({ workOrderId: created.id });

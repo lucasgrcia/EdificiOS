@@ -108,25 +108,40 @@ OPEN / IN_PROGRESS → CANCELLED
 
 ### Notification
 
-Mensaje operativo generado por el sistema para informar a un Actor sobre un evento relevante.
+Mensaje operativo generado **automáticamente por la aplicación** para informar a un Actor sobre un hito relevante del flujo operativo.
 
 **No usar:** Alert, Message, PushNotification como nombre de dominio.
 
+**Bounded context:** Operations.
+
+**No participa del Event Log.** No modifica agregados operativos (Incident, WorkOrder). No genera transiciones de dominio. Es una integración **Application → Notification** vía `CreateNotificationUseCase`, siempre post-persistencia exitosa.
+
 **Puede originarse por:**
 
-- Incident detectado (automático vía `DetectIncidentUseCase`)
-- WorkOrder creada (futuro)
-- Otros eventos operativos (futuro)
+- Incident detectado (`DetectIncidentUseCase`)
+- Incident asignado (`AssignIncidentUseCase`)
+- Incident resuelto (`ResolveIncidentUseCase`)
+- WorkOrder iniciada (`StartWorkOrderUseCase`)
+- WorkOrder completada (`CompleteWorkOrderUseCase`)
+- Creación manual (`POST /api/v1/operations/notifications`)
 
 **Importante:** no representa envío real (email, push, websocket). Representa una **intención de notificación persistida** en tabla `notifications`.
 
 **Relación con Actor:** `recipientId` (UUID del Actor destinatario). Notification **no conoce** Incident ni WorkOrder; las integraciones viven en Application.
 
-**Estados:** `PENDING`, `SENT`, `FAILED`, `READ`.
+**Estados:** `PENDING`, `SENT`, `FAILED`, `READ` (sin transiciones ni mark as read en el MVP actual).
 
-**Canales MVP:** `IN_APP`, `EMAIL`, `PUSH` (canal almacenado; sin delivery real en Sprint 9).
+**Canales MVP:** `IN_APP`, `EMAIL`, `PUSH` (canal almacenado; integraciones automáticas usan `IN_APP`; sin delivery real).
 
-**Tipo:** texto libre (`INCIDENT_DETECTED`, `WORK_ORDER_CREATED`, etc.).
+**Tipos operativos actuales:**
+
+| Type | Origen |
+|------|--------|
+| `INCIDENT_DETECTED` | `DetectIncidentUseCase` |
+| `INCIDENT_ASSIGNED` | `AssignIncidentUseCase` |
+| `INCIDENT_RESOLVED` | `ResolveIncidentUseCase` |
+| `WORK_ORDER_STARTED` | `StartWorkOrderUseCase` |
+| `WORK_ORDER_COMPLETED` | `CompleteWorkOrderUseCase` |
 
 **Persistencia:** tabla `notifications`. Sin Domain Events en el MVP actual.
 
@@ -197,7 +212,7 @@ Vista de lectura (read model) que ordena cronológicamente los hechos operativos
 | Event Log | `workflow.flow.detected`, `.assigned`, etc. |
 | Evidencia asociada | `EVIDENCE_ASSOCIATED` |
 | WorkOrder | `WORK_ORDER_CREATED` |
-| Notification | `INCIDENT_DETECTED`, `WORK_ORDER_CREATED`, etc. |
+| Notification | `INCIDENT_DETECTED`, `INCIDENT_ASSIGNED`, `INCIDENT_RESOLVED`, `WORK_ORDER_STARTED`, `WORK_ORDER_COMPLETED` |
 
 **HTTP:** `GET /api/v1/operations/incidents/:incidentId/timeline` → array plano de entradas.
 
@@ -244,14 +259,31 @@ Incident (existente)
               └── CreateWorkOrderUseCase
 ```
 
-Notificación automática al detectar Incident:
+Notificaciones automáticas (ciclo operativo completo):
 
 ```
 DetectIncidentUseCase
-  └── persistencia Incident (Event Log + Proyección + Outbox)
-        └── CreateNotificationUseCase
-              └── recipientId: assignedActorId ?? actorId
+  └── persistencia Incident
+        └── CreateNotificationUseCase → INCIDENT_DETECTED
+
+AssignIncidentUseCase
+  └── persistencia Incident
+        └── CreateNotificationUseCase → INCIDENT_ASSIGNED
+
+StartWorkOrderUseCase
+  └── persistencia WorkOrder
+        └── CreateNotificationUseCase → WORK_ORDER_STARTED
+
+CompleteWorkOrderUseCase
+  └── persistencia WorkOrder
+        └── CreateNotificationUseCase → WORK_ORDER_COMPLETED
+
+ResolveIncidentUseCase
+  └── persistencia Incident
+        └── CreateNotificationUseCase → INCIDENT_RESOLVED
 ```
+
+Todas las integraciones viven en Application. Nunca en dominio.
 
 Timeline operacional de un Incident:
 
@@ -295,7 +327,8 @@ GET /api/v1/operations/incidents/:incidentId/timeline
 | Incident → Shift | Referencia por `ShiftId` | `DetectIncidentUseCase` |
 | Incident → Actor (detección) | Derivado del Shift activo | `DetectIncidentUseCase` |
 | Incident → WorkOrder | Referencia por `incidentId` | `CreateWorkOrderFromIncidentUseCase` → `CreateWorkOrderUseCase` |
-| Incident → Notification | Sin referencia en agregados | `DetectIncidentUseCase` → `CreateNotificationUseCase` |
+| Incident → Notification | Sin referencia en agregados | `DetectIncidentUseCase`, `AssignIncidentUseCase`, `ResolveIncidentUseCase` → `CreateNotificationUseCase` |
+| WorkOrder → Notification | Sin referencia en agregados | `StartWorkOrderUseCase`, `CompleteWorkOrderUseCase` → `CreateNotificationUseCase` |
 | Evidence → Event | Asociación post-captura | `CaptureEvidenceUseCase` / PR3 |
 
 **Regla:** sin Foreign Keys entre agregados. Integridad en Application.

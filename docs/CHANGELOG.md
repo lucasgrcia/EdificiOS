@@ -6,6 +6,45 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.11.0-alpha] - 2026-07-11
+
+### Added
+
+#### Sprint 11 — Automatización operacional (PR1)
+
+- `AssignIncidentUseCase` crea Notification automáticamente tras asignación exitosa (`INCIDENT_ASSIGNED`, canal `IN_APP`).
+
+#### Sprint 11 — WorkOrder notifications (PR2)
+
+- `StartWorkOrderUseCase` crea Notification automáticamente tras inicio exitoso (`WORK_ORDER_STARTED`, canal `IN_APP`).
+
+#### Sprint 11 — WorkOrder notifications (PR3)
+
+- `CompleteWorkOrderUseCase` crea Notification automáticamente tras completado exitoso (`WORK_ORDER_COMPLETED`, canal `IN_APP`).
+
+#### Sprint 11 — Incident resolve notification (PR4)
+
+- `ResolveIncidentUseCase` crea Notification automáticamente tras resolución exitosa (`INCIDENT_RESOLVED`, canal `IN_APP`).
+- `recipientId` desde proyección del Incident (`assignedActorId ?? actorId`); integración post-transacción.
+
+#### Sprint 11 — Documentación y cierre (PR5)
+
+- Sección **Notification Lifecycle** en `docs/05_current_status.md`.
+- Glosario actualizado con los cinco tipos de Notification operativos.
+- `docs/architecture_reviews/sprint_11_notifications.md` (Architecture Review).
+
+### Changed
+
+- Ciclo operativo de notificaciones completo: detect, assign, start/complete WorkOrder, resolve Incident.
+- Todas las integraciones viven exclusivamente en Application; `CreateNotificationUseCase` como punto único de creación.
+- `docs/architecture_backlog.md` con deuda futura Sprint 11 (templates, canales, query, read model, READ).
+
+### Nota
+
+- La notificación al detectar Incident (`INCIDENT_DETECTED`) se introdujo en Sprint 9 PR4; Sprint 11 completa el ciclo con las cuatro integraciones restantes.
+
+---
+
 ## [0.10.0-alpha] - 2026-07-10
 
 ### Added

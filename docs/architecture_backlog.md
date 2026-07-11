@@ -246,6 +246,17 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | SHA-256 verifica integridad, no identidad | `05_current_status.md` | Sin deduplicación por hash; dos capturas idénticas son dos Evidence distintas. |
 | Datos legacy con `site_id` huérfano | Sprint 5 Review | Migración `006` después de `004`/`005`. Bootstrap: Site primero. |
 
+### Sprint 11 — Notification (futuro)
+
+| Ítem | Origen | Justificación |
+|------|--------|---------------|
+| Templates parametrizables para Notification | Sprint 11 PR1–PR4 | Mensajes fijos en constantes de cada use case |
+| Canales futuros (Push/Email reales) | Sprint 11 PR1–PR4 | Solo `IN_APP` persistido; sin delivery providers |
+| Notification Query API | Sprint 9 PR5 | Creación HTTP + dashboard `recentNotifications`; falta `GET` / list by recipient |
+| Notification Read Model | Sprint 10 PR4 | Dashboard usa `findRecent`; sin vista dedicada por Actor |
+| Estado `READ` / mark as read | Sprint 9 PR1 | Dominio define `READ` sin caso de uso ni transición |
+| `incident_id` en `notifications` | Sprint 10 PR1 | Correlación heurística en timeline; sin referencia explícita a Incident |
+
 ### Sprint 9 — Notification (futuro)
 
 | Ítem | Origen | Justificación |

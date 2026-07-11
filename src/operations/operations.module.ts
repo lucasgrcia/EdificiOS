@@ -328,9 +328,18 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     },
     {
       provide: AssignIncidentUseCase,
-      inject: [PostgresOperationsTransactionRunner],
-      useFactory: (transactionRunner: TransactionRunner) =>
-        new AssignIncidentUseCase(createUseCaseDependencies(transactionRunner)),
+      inject: [
+        PostgresOperationsTransactionRunner,
+        CreateNotificationUseCase,
+      ],
+      useFactory: (
+        transactionRunner: TransactionRunner,
+        createNotificationUseCase: CreateNotificationUseCase,
+      ) =>
+        new AssignIncidentUseCase({
+          ...createUseCaseDependencies(transactionRunner),
+          createNotificationUseCase,
+        }),
     },
     {
       provide: StartIncidentUseCase,
@@ -340,9 +349,18 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     },
     {
       provide: ResolveIncidentUseCase,
-      inject: [PostgresOperationsTransactionRunner],
-      useFactory: (transactionRunner: TransactionRunner) =>
-        new ResolveIncidentUseCase(createUseCaseDependencies(transactionRunner)),
+      inject: [
+        PostgresOperationsTransactionRunner,
+        CreateNotificationUseCase,
+      ],
+      useFactory: (
+        transactionRunner: TransactionRunner,
+        createNotificationUseCase: CreateNotificationUseCase,
+      ) =>
+        new ResolveIncidentUseCase({
+          ...createUseCaseDependencies(transactionRunner),
+          createNotificationUseCase,
+        }),
     },
     {
       provide: CaptureEvidenceUseCase,
@@ -532,18 +550,26 @@ function createUseCaseDependencies(transactionRunner: TransactionRunner) {
     },
     {
       provide: StartWorkOrderUseCase,
-      inject: [PostgresWorkOrderRepository],
-      useFactory: (workOrderRepository: PostgresWorkOrderRepository) =>
+      inject: [PostgresWorkOrderRepository, CreateNotificationUseCase],
+      useFactory: (
+        workOrderRepository: PostgresWorkOrderRepository,
+        createNotificationUseCase: CreateNotificationUseCase,
+      ) =>
         new StartWorkOrderUseCase({
           workOrderRepository,
+          createNotificationUseCase,
         }),
     },
     {
       provide: CompleteWorkOrderUseCase,
-      inject: [PostgresWorkOrderRepository],
-      useFactory: (workOrderRepository: PostgresWorkOrderRepository) =>
+      inject: [PostgresWorkOrderRepository, CreateNotificationUseCase],
+      useFactory: (
+        workOrderRepository: PostgresWorkOrderRepository,
+        createNotificationUseCase: CreateNotificationUseCase,
+      ) =>
         new CompleteWorkOrderUseCase({
           workOrderRepository,
+          createNotificationUseCase,
         }),
     },
     {
