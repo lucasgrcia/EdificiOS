@@ -4,16 +4,15 @@ import {
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 
-import { GetApiInfoUseCase } from '../src/info/application/get-api-info-use-case';
-import { InfoController } from '../src/info/infrastructure/http/info.controller';
+import { ApplicationConfigModule } from '../src/config/application-config.module';
+import { InfoModule } from '../src/info/info.module';
 
 describe('Info HTTP integration', () => {
   let app: NestFastifyApplication;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      controllers: [InfoController],
-      providers: [GetApiInfoUseCase],
+      imports: [ApplicationConfigModule, InfoModule],
     }).compile();
 
     app = moduleRef.createNestApplication(new FastifyAdapter());
@@ -41,7 +40,7 @@ describe('Info HTTP integration', () => {
         url: '/api/v1/info',
       });
 
-      expect(response.json().name).toBe('EdificiOS Operations API');
+      expect(response.json().name).toBe('EdificiOS API');
     });
 
     it('returns the current release version', async () => {
@@ -50,7 +49,7 @@ describe('Info HTTP integration', () => {
         url: '/api/v1/info',
       });
 
-      expect(response.json().version).toBe('0.13.0-alpha');
+      expect(response.json().version).toBe('0.15.0-alpha');
     });
 
     it('returns the environment', async () => {

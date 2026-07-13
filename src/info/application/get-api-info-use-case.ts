@@ -1,8 +1,6 @@
 import { ApiInfoView } from './api-info-view';
+import { ApplicationConfig } from '../../config/application-config';
 
-const API_NAME = 'EdificiOS Operations API';
-const API_VERSION = '0.13.0-alpha';
-const API_ENVIRONMENT = 'development';
 const API_BOUNDED_CONTEXT = 'operations';
 const API_ARCHITECTURE = [
   'DDD',
@@ -12,11 +10,13 @@ const API_ARCHITECTURE = [
 ] as const;
 
 export class GetApiInfoUseCase {
+  constructor(private readonly applicationConfig: ApplicationConfig) {}
+
   execute(): ApiInfoView {
     return {
-      name: API_NAME,
-      version: API_VERSION,
-      environment: API_ENVIRONMENT,
+      name: this.applicationConfig.name,
+      version: this.applicationConfig.version,
+      environment: this.applicationConfig.environment,
       boundedContext: API_BOUNDED_CONTEXT,
       architecture: [...API_ARCHITECTURE],
     };

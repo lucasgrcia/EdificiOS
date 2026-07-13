@@ -1,8 +1,8 @@
 # Estado actual del proyecto
 
-Última actualización: 2026-07-11
+Última actualización: 2026-07-13
 
-Sprint 14 — cerrado.
+Sprint 15 — cerrado.
 
 ---
 
@@ -13,7 +13,7 @@ Sprint 14 — cerrado.
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Tests | 549/549 OK |
+| Tests | 574/574 OK |
 | Build | OK |
 
 ---
@@ -265,6 +265,16 @@ Timeline (GetIncidentTimelineUseCase)
 | PR4 | `ApplicationMetrics` (contadores en memoria) | ✔ |
 | PR5 | Documentación + Architecture Review | ✔ |
 
+### Sprint 15 — API Platform (Problem Details + Validation + Swagger + Configuration)
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | RFC 9457 Problem Details + `ProblemDetailsFilter` global | ✔ |
+| PR2 | `HttpValidationPipe` global + helpers HTTP | ✔ |
+| PR3 | Swagger / OpenAPI (`GET /api/docs`, `/api/docs-json`) | ✔ |
+| PR4 | `ApplicationConfig` + `ApplicationConfigModule` | ✔ |
+| PR5 | Documentación + Architecture Review | ✔ |
+
 ---
 
 ## Funcionalidades implementadas
@@ -465,6 +475,49 @@ Outbox (outbox.correlation_id)
 
 Estado: **operativo** (Sprint 14 PR1–PR4).
 
+### API Platform
+
+Capa transversal HTTP que unifica contrato de errores, validación de entrada, documentación y configuración. Vive en `src/shared/http/` y `src/config/`; no modifica dominio ni casos de uso de negocio.
+
+```
+HTTP Request
+    ↓
+Global Validation (HttpValidationPipe)
+    ↓
+Request Pipes (validación específica por endpoint)
+    ↓
+Controller
+    ↓
+Use Case
+    ↓
+Problem Details (ProblemDetailsFilter en errores)
+    ↓
+Swagger (documentación OpenAPI en /api/docs)
+    ↓
+ApplicationConfig (metadatos centralizados)
+```
+
+La API posee:
+
+| Capacidad | Componente | Rol |
+|-----------|------------|-----|
+| **Contrato de errores unificado** | `ProblemDetailsFilter` | Toda excepción HTTP → RFC 9457 (`application/problem+json`) con `correlationId` |
+| **Validación global** | `HttpValidationPipe` | Content-Type JSON, body objeto, rechazo de `null`; solo en `@Body()` |
+| **Documentación OpenAPI** | `setupSwagger` + enriquecimiento | Swagger UI + JSON; DTOs, responses y Problem Details documentados |
+| **Configuración centralizada** | `ApplicationConfig` | `name`, `version`, `environment`, `apiPrefix`, `swaggerPath` |
+
+**Integración:** `ApplicationConfig` alimenta `GET /api/v1/info` y metadata Swagger. Health mantiene su versión interna (no modificado en Sprint 15).
+
+**Endpoints de plataforma:**
+
+| Recurso | URL |
+|---------|-----|
+| Swagger UI | `GET /api/docs` |
+| OpenAPI JSON | `GET /api/docs-json` |
+| API Info | `GET /api/v1/info` |
+
+Estado: **operativo** (Sprint 15 PR1–PR4).
+
 ---
 
 ## Persistencia
@@ -492,7 +545,7 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 ## Tests
 
 ```
-52 test suites — 549 tests — 0 fallos
+56 test suites — 574 tests — 0 fallos
 ```
 
 | Área | Archivos |
@@ -501,7 +554,8 @@ Migraciones en `src/operations/infrastructure/migrations/`.
 | Dominio Incident | `incident-aggregate-replay.spec.ts`, `incident-p0-guards.spec.ts` |
 | Dominio Evidence | `evidence.spec.ts` |
 | Casos de uso | `detect-incident`, `assign-incident`, `resolve-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order`, `create-notification`, `notification-query`, `get-incident-timeline`, `get-operations-dashboard` |
-| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `notification-query.http`, `dashboard.http`, `health.http`, `info.http`, `correlation-id.http` |
+| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `notification-query.http`, `dashboard.http`, `health.http`, `info.http`, `correlation-id.http`, `problem-details.http`, `http-validation.http`, `swagger.http` |
+| API Platform | `problem-details.http.integration.spec.ts`, `http-validation.integration.spec.ts`, `swagger.http.integration.spec.ts`, `application-config.integration.spec.ts` |
 | Observability | `application-logger.integration.spec.ts`, `application-metrics.integration.spec.ts` |
 | Repositorios / Query | `postgres-*-repository.integration.spec.ts`, `postgres-incident-timeline-repository.integration.spec.ts` |
 | Transacciones | `postgres-operations-transaction-runner.integration.spec.ts` |
@@ -512,7 +566,7 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 
 ## Arquitectura
 
-- Monolito modular, bounded context `operations` + módulos transversales (`health`, `info`, `shared`).
+- Monolito modular, bounded context `operations` + módulos transversales (`health`, `info`, `shared`, `config`).
 - Clean Architecture: `domain → application → infrastructure`.
 - DDD táctico: agregados, Value Objects, Domain Events.
 - Transactional Outbox + Event Log como fuente de verdad (Incident).
@@ -523,6 +577,7 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - Dashboard: `summary` y `activityFeed` calculados en Application (Sprint 13).
 - Health / Info: módulos independientes de Operations; Health verifica pool PostgreSQL; Info expone metadatos constantes.
 - Observability: Correlation ID + Application Logger + Application Metrics en `SharedModule` (Sprint 14); propagación a Event Log y Outbox.
+- API Platform: Problem Details (RFC 9457) + HTTP Validation global + Swagger/OpenAPI + `ApplicationConfig` (Sprint 15).
 - Query repositories: `IncidentQuery`, `EvidenceQuery`, `EventQuery`, `WorkOrderQuery`, `NotificationQuery`, `IncidentTimeline`.
 - Evidence respalda Domain Events, no Incident (ADR-006).
 - Site es agregado explícito; Asset referencia Site por identidad (ADR-007).
@@ -533,7 +588,7 @@ Documentación de decisiones: `docs/architecture_decisions/`.
 
 Glosario ubicuo: `docs/glossary.md`. Deuda arquitectónica: `docs/architecture_backlog.md`.
 
-Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`, `docs/architecture_reviews/sprint_13_operational_endpoints.md`, `docs/architecture_reviews/sprint_14_observability.md`.
+Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`, `docs/architecture_reviews/sprint_13_operational_endpoints.md`, `docs/architecture_reviews/sprint_14_observability.md`, `docs/architecture_reviews/sprint_15_api_platform.md`.
 
 ---
 
@@ -575,5 +630,7 @@ Deuda futura Sprint 12 (Notification Queries): `findRecent(100)` en Timeline sin
 Deuda futura Sprint 13 (Operational Endpoints): versión desde `package.json`, `environment` configurable, readiness/liveness, Activity Feed paginado, Dashboard Summary optimizable.
 
 Deuda futura Sprint 14 (Observability): integración Prometheus, exportador OpenTelemetry, persistencia de métricas, dashboards Grafana, métricas Notification, `correlationId` en Notification.
+
+Deuda futura Sprint 15 (API Platform): autenticación, autorización, rate limiting, versionado múltiple (v2), generación automática de SDKs OpenAPI, configuración desde variables de entorno.
 
 Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`.

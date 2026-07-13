@@ -11,7 +11,7 @@ Este documento es la **fuente canónica** de ítems P1 y P2. `docs/05_current_st
 - No agregar ítems sin justificación vinculada a una review, ADR o Field Story.
 - Al cerrar un ítem, marcarlo como resuelto con sprint y PR.
 
-Última consolidación: 2026-07-11 (post Sprint 14).
+Última consolidación: 2026-07-13 (post Sprint 15).
 
 ---
 
@@ -245,6 +245,17 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | Almacenamiento local filesystem | `05_current_status.md` | Hasta que una Field Story exija otra cosa. |
 | SHA-256 verifica integridad, no identidad | `05_current_status.md` | Sin deduplicación por hash; dos capturas idénticas son dos Evidence distintas. |
 | Datos legacy con `site_id` huérfano | Sprint 5 Review | Migración `006` después de `004`/`005`. Bootstrap: Site primero. |
+
+### Sprint 15 — API Platform (futuro)
+
+| Ítem | Origen | Justificación |
+|------|--------|---------------|
+| Autenticación | Sprint 15 PR3 | Esquema Bearer preparado en OpenAPI; sin validación de tokens en runtime |
+| Autorización | Sprint 15 PR3 | Sin roles ni permisos por endpoint; cualquier cliente puede invocar la API |
+| Rate limiting | Sprint 15 PR2 | Sin límite de requests por IP o Actor; riesgo de abuso en despliegue público |
+| Versionado múltiple (v2) | Sprint 15 PR4 | `apiPrefix` fijo `/api/v1`; sin estrategia de coexistencia de versiones |
+| Generación automática de SDKs OpenAPI | Sprint 15 PR3 | Spec disponible en `/api/docs-json`; sin pipeline de clientes TypeScript/Java/etc. |
+| Configuración desde variables de entorno | Sprint 15 PR4 | `ApplicationConfig` con valores hardcodeados; `environment` y `version` no leen `NODE_ENV` ni `package.json`; Health aún con versión propia (`0.13.0-alpha`) |
 
 ### Sprint 14 — Observability (futuro)
 

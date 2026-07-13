@@ -322,6 +322,97 @@ El Event Log **no** reemplaza logs de aplicación ni métricas. Los tres se comp
 
 ---
 
+### Problem Details
+
+Formato estándar de respuesta de error HTTP definido en **RFC 9457**. En EdificiOS, todo error HTTP se serializa como `application/problem+json`.
+
+**Campos MVP:** `type` (URI estable), `title`, `status`, `detail`, `instance` (URL del request), `correlationId`.
+
+**Módulo:** `src/shared/http/problem-details.ts`, `problem-details.filter.ts`.
+
+**No confundir con:** body de error ad-hoc de NestJS ni mensajes de validación sin estructura.
+
+---
+
+### RFC 9457
+
+Estándar IETF que define **Problem Details for HTTP APIs**. Reemplaza respuestas de error inconsistentes por un contrato JSON predecible.
+
+**En EdificiOS:** `ProblemDetailsFilter` global transforma excepciones HTTP conocidas en Problem Details. Content-Type: `application/problem+json`.
+
+---
+
+### HTTP Validation
+
+Capa global de validación HTTP que aplica reglas comunes antes de los Request Pipes específicos.
+
+**Módulo:** `src/shared/http/http-validation.ts`, `http-validation.pipe.ts`.
+
+**Responsabilidades MVP:**
+
+- Validar `Content-Type: application/json` cuando hay body
+- Aceptar GET sin body
+- Rechazar body `null`
+- Rechazar payload que no sea objeto JSON
+
+**Alcance:** solo parámetros `@Body()`. No reemplaza pipes de ruta (`DetectIncidentRequestPipe`, etc.).
+
+---
+
+### Swagger
+
+Herramienta de documentación interactiva que consume una especificación OpenAPI y expone una UI en el navegador.
+
+**En EdificiOS:** `GET /api/docs` (Swagger UI). Generada por `@nestjs/swagger` en `setupSwagger`.
+
+**No es:** la fuente de verdad del contrato (esa es la spec OpenAPI JSON).
+
+---
+
+### OpenAPI
+
+Especificación estándar (antes Swagger Spec) para describir APIs REST: paths, métodos, schemas, responses.
+
+**En EdificiOS:** `GET /api/docs-json`. Documenta todos los endpoints Operations, Health e Info; DTOs HTTP; respuestas de error como Problem Details.
+
+---
+
+### ApplicationConfig
+
+Configuración centralizada de la aplicación. Singleton inyectable vía `ApplicationConfigModule` (`@Global()`).
+
+**Módulo:** `src/config/application-config.ts`.
+
+**Propiedades MVP:** `name`, `version`, `environment`, `apiPrefix`, `swaggerPath`.
+
+**Consumidores:** `GetApiInfoUseCase`, `setupSwagger`. Independiente de Operations.
+
+**No confundir con:** Policy (regla de negocio) ni variables de entorno (deuda futura).
+
+---
+
+### Validation vs Problem Details vs Swagger vs Configuration
+
+| Concepto | Responsabilidad | Cuándo actúa | Dónde vive |
+|----------|-----------------|--------------|------------|
+| **HTTP Validation** | Validar forma del request HTTP (Content-Type, body JSON objeto) | Antes del controller, en `@Body()` | `src/shared/http/http-validation.*` |
+| **Request Pipes** | Validar semántica del DTO por endpoint (`assetId` requerido, etc.) | Después de HTTP Validation, en `@Body()` / `@Param()` / `@Query()` | `src/operations/infrastructure/http/*-request.pipe.ts` |
+| **Problem Details** | Serializar errores HTTP en contrato RFC 9457 | Al lanzar excepción (catch global) | `src/shared/http/problem-details.*` |
+| **Swagger / OpenAPI** | Documentar contrato de la API (métodos, bodies, responses) | Solo lectura; no ejecuta en runtime de negocio | `src/shared/http/swagger/` |
+| **ApplicationConfig** | Centralizar metadatos de plataforma (nombre, versión, paths) | Bootstrap + endpoints Info/Swagger | `src/config/` |
+
+**Flujo resumido:**
+
+```
+Request → HTTP Validation → Request Pipes → Controller → Use Case
+                                              ↓ (error)
+                                        Problem Details
+Documentación: Swagger/OpenAPI (paralela, no interviene en el flujo de negocio)
+Metadatos: ApplicationConfig (nombre, versión, rutas de docs)
+```
+
+---
+
 ### Flow
 
 El ciclo de trabajo asociado a un Incident. En el MVP no es un agregado ni una clase de dominio: es el **nombre del workflow** reflejado en eventos `workflow.flow.*` y en el parámetro `flowId` (identificador del Domain Event que registra cada transición).
@@ -513,6 +604,21 @@ HTTP Request
               └── Incident Use Cases
                     ├── events.correlation_id
                     └── outbox.correlation_id
+```
+
+API Platform (Sprint 15):
+
+```
+HTTP Request
+  └── HttpValidationPipe (global, solo @Body)
+        └── Request Pipes (específicos)
+              └── Controller → Use Case
+                    ↓ (error)
+              ProblemDetailsFilter → application/problem+json
+
+GET /api/docs        → Swagger UI (OpenAPI)
+GET /api/docs-json   → especificación OpenAPI
+GET /api/v1/info     → ApplicationConfig (name, version, environment)
 ```
 
 ---

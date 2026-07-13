@@ -6,6 +6,7 @@ import {
 import multipart from '@fastify/multipart';
 
 import { AppModule } from './app.module';
+import { setupSwagger } from './shared/http/swagger/setup-swagger';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -13,6 +14,7 @@ async function bootstrap(): Promise<void> {
     new FastifyAdapter(),
   );
   await app.register(multipart);
+  setupSwagger(app);
   await app.listen(3000);
 }
 

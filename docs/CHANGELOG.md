@@ -6,6 +6,50 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.15.0-alpha] - 2026-07-13
+
+### Added
+
+#### Sprint 15 — Problem Details (PR1)
+
+- Respuesta de errores unificada según **RFC 9457** (`application/problem+json`).
+- `ProblemDetails` en `src/shared/http/problem-details.ts`: `type`, `title`, `status`, `detail`, `instance`, `correlationId`.
+- `ProblemDetailsFilter` global: transforma `NotFoundException`, `BadRequestException`, `ConflictException`, `ForbiddenException`, `InternalServerErrorException`.
+- URLs estables de error (`https://api.edificios/errors/...`); `correlationId` desde `CorrelationIdProvider`; `instance` = `request.url`.
+
+#### Sprint 15 — Global HTTP Validation (PR2)
+
+- `HttpValidationPipe` global en `src/shared/http/`: validación HTTP compartida para toda la API.
+- Helpers en `http-validation.ts`: Content-Type JSON, rechazo de body `null` y payloads no-objeto.
+- Convive con Request Pipes específicos (se ejecutan después); GET sin body no se valida.
+
+#### Sprint 15 — Swagger / OpenAPI (PR3)
+
+- Documentación automática en `GET /api/docs` (Swagger UI) y `GET /api/docs-json` (OpenAPI JSON).
+- `@nestjs/swagger` + enriquecimiento en `src/shared/http/swagger/`: todos los endpoints Operations, Health, Info.
+- DTOs HTTP con `@ApiProperty`; respuestas de error documentadas como Problem Details; esquema Bearer preparado (sin auth en MVP).
+
+#### Sprint 15 — Application Configuration Module (PR4)
+
+- `ApplicationConfig` en `src/config/`: `name`, `version`, `environment`, `apiPrefix`, `swaggerPath`.
+- `ApplicationConfigModule` global (`@Global()`); independiente de Operations.
+- Integración en `GetApiInfoUseCase` y `setupSwagger`; valores iniciales `0.15.0-alpha`, `/api/v1`, `/api/docs`.
+
+#### Sprint 15 — Documentación y cierre (PR5)
+
+- Sprint 15 marcado como COMPLETADO en `docs/05_current_status.md`.
+- Sección **API Platform** en estado del proyecto.
+- Glosario: Problem Details, RFC 9457, HTTP Validation, Swagger, OpenAPI, ApplicationConfig.
+- `docs/architecture_reviews/sprint_15_api_platform.md` (Architecture Review).
+
+### Changed
+
+- Plataforma HTTP transversal consolidada: validación global → pipes de ruta → Problem Details en errores → documentación OpenAPI → configuración centralizada.
+- `GET /api/v1/info` expone `name`, `version` y `environment` desde `ApplicationConfig` (`EdificiOS API`, `0.15.0-alpha`).
+- `docs/architecture_backlog.md` con deuda futura Sprint 15 (auth, rate limiting, env config, SDKs OpenAPI).
+
+---
+
 ## [0.14.0-alpha] - 2026-07-11
 
 ### Added
