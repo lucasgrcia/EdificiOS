@@ -391,6 +391,94 @@ Configuración centralizada de la aplicación. Singleton inyectable vía `Applic
 
 ---
 
+### Authentication Context
+
+Puerto de Application que resuelve **quién es el usuario actual** en un request HTTP.
+
+**Interfaz MVP:** `getCurrentUserId(): string | null`.
+
+**Módulo:** `src/authentication/application/authentication-context.ts`.
+
+**Implementación Sprint 16:** `StubAuthenticationContext` — devuelve siempre `11111111-1111-1111-1111-111111111111`; no lee JWT ni headers.
+
+**Sprint 17:** implementación basada en JWT sin modificar use cases ni controllers.
+
+---
+
+### Authenticated User
+
+Vista de lectura (`AuthenticatedUserView`) que representa un usuario persistido en la tabla `users`.
+
+**Campos:** `id`, `email`, `displayName`, `status`, `createdAt`.
+
+**No confundir con:** Actor (persona operativa del edificio en bounded context Operations).
+
+---
+
+### Current User
+
+Usuario autenticado **en el contexto del request actual**, expuesto vía `GET /api/v1/authentication/me`.
+
+**Use case:** `GetCurrentUserUseCase` — lee `AuthenticationContext`, delega a `GetAuthenticatedUserUseCase`.
+
+**No es:** login ni sesión; solo resolución de identidad desde el contexto.
+
+---
+
+### User Query Model
+
+Capa de lectura CQRS del bounded context Authentication.
+
+**Componentes:** `UserQueryRepository`, `PostgresUserQueryRepository`, `GetAuthenticatedUserUseCase`, `AuthenticatedUserView`.
+
+**HTTP:** `GET /api/v1/authentication/users/:id`.
+
+---
+
+### User Command Model
+
+Capa de escritura CQRS del bounded context Authentication.
+
+**Componentes:** `UserPersistence`, `PostgresUserRepository`, `UserRecord`, `CreateUserUseCase`.
+
+**HTTP:** `POST /api/v1/authentication/users`.
+
+---
+
+### Stub Authentication
+
+Implementación temporal de `AuthenticationContext` para desarrollo y pruebas sin JWT.
+
+**Clase:** `StubAuthenticationContext`.
+
+**Comportamiento:** `getCurrentUserId()` retorna UUID fijo; sin acceso al request HTTP.
+
+**Propósito:** permitir que Sprint 17 reemplace el stub por JWT sin cambiar la arquitectura.
+
+---
+
+### Authentication Context vs JWT Provider vs Controller vs Use Case
+
+| Concepto | Responsabilidad | Cuándo actúa | Dónde vive |
+|----------|-----------------|--------------|------------|
+| **Authentication Context** | Resolver el `userId` del request actual | Antes del use case de current user | `application/authentication-context.ts` + implementación en `infrastructure/http/` |
+| **JWT Provider** (Sprint 17) | Validar token y extraer `userId` del claim | Sustituye al stub en runtime | `infrastructure/` (futuro) |
+| **Controller** | Adaptar HTTP → command/query; sin lógica de negocio | En el borde HTTP | `infrastructure/http/authenticated-user.controller.ts` |
+| **Use Case** | Orquestar context + repositorios; reglas de aplicación mínimas | Application layer | `application/get-current-user-use-case.ts`, etc. |
+
+**Flujo Current User:**
+
+```
+GET /me → Controller → GetCurrentUserUseCase
+              → AuthenticationContext.getCurrentUserId()
+              → GetAuthenticatedUserUseCase.execute(userId)
+              → AuthenticatedUserView
+```
+
+El controller **no** conoce JWT. El use case **no** parsea headers. Solo el proveedor de contexto cambia entre sprints.
+
+---
+
 ### Validation vs Problem Details vs Swagger vs Configuration
 
 | Concepto | Responsabilidad | Cuándo actúa | Dónde vive |
@@ -619,6 +707,21 @@ HTTP Request
 GET /api/docs        → Swagger UI (OpenAPI)
 GET /api/docs-json   → especificación OpenAPI
 GET /api/v1/info     → ApplicationConfig (name, version, environment)
+```
+
+Authentication (Sprint 16):
+
+```
+POST /api/v1/authentication/users
+  └── CreateUserUseCase → UserPersistence → users
+
+GET /api/v1/authentication/users/:id
+  └── GetAuthenticatedUserUseCase → UserQueryRepository → users
+
+GET /api/v1/authentication/me
+  └── GetCurrentUserUseCase
+        ├── AuthenticationContext (Stub en Sprint 16)
+        └── GetAuthenticatedUserUseCase → users
 ```
 
 ---

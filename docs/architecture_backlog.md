@@ -11,7 +11,7 @@ Este documento es la **fuente canónica** de ítems P1 y P2. `docs/05_current_st
 - No agregar ítems sin justificación vinculada a una review, ADR o Field Story.
 - Al cerrar un ítem, marcarlo como resuelto con sprint y PR.
 
-Última consolidación: 2026-07-13 (post Sprint 15).
+Última consolidación: 2026-07-13 (post Sprint 16).
 
 ---
 
@@ -246,11 +246,21 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | SHA-256 verifica integridad, no identidad | `05_current_status.md` | Sin deduplicación por hash; dos capturas idénticas son dos Evidence distintas. |
 | Datos legacy con `site_id` huérfano | Sprint 5 Review | Migración `006` después de `004`/`005`. Bootstrap: Site primero. |
 
+### Sprint 16 — Authentication (futuro)
+
+| Ítem | Origen | Justificación |
+|------|--------|---------------|
+| JWT Authentication | Sprint 16 PR4 | `StubAuthenticationContext` sin validación de tokens; Bearer en OpenAPI sin runtime |
+| Password Hashing | Sprint 16 PR3 | `CreateUserUseCase` persiste usuario sin password ni hash |
+| Login endpoint | Sprint 16 PR3 | Solo `POST /users` (registro); sin flujo de autenticación |
+| Refresh Tokens | Sprint 16 PR4 | Sin emisión ni rotación de tokens |
+| Authorization (Roles/Permissions) | Sprint 15 PR3, Sprint 16 | Sin guards ni políticas por endpoint |
+| Session Revocation | Sprint 16 PR4 | Sin blacklist ni invalidación de tokens activos |
+
 ### Sprint 15 — API Platform (futuro)
 
 | Ítem | Origen | Justificación |
 |------|--------|---------------|
-| Autenticación | Sprint 15 PR3 | Esquema Bearer preparado en OpenAPI; sin validación de tokens en runtime |
 | Autorización | Sprint 15 PR3 | Sin roles ni permisos por endpoint; cualquier cliente puede invocar la API |
 | Rate limiting | Sprint 15 PR2 | Sin límite de requests por IP o Actor; riesgo de abuso en despliegue público |
 | Versionado múltiple (v2) | Sprint 15 PR4 | `apiPrefix` fijo `/api/v1`; sin estrategia de coexistencia de versiones |
@@ -331,6 +341,9 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | `operatorId` en Shift | Sprint 6 PR4 | Reemplazado por `actorId` en dominio y HTTP |
 | Notification Query API (`GET`, list by recipient) | Sprint 12 PR2 | `NotificationQueryController` + query use cases |
 | Notification Read Model por Actor | Sprint 12 PR1/PR3 | `NotificationView`, `findByRecipient`, Dashboard `notifications` |
+| Authentication Query API | Sprint 16 PR2 | `GET /api/v1/authentication/users/:id` + `GetAuthenticatedUserUseCase` |
+| Create User (Command API) | Sprint 16 PR3 | `POST /api/v1/authentication/users` + `CreateUserUseCase` |
+| Authentication Context (stub) | Sprint 16 PR4 | Puerto `AuthenticationContext` + `StubAuthenticationContext` + `GET /me` |
 
 ---
 
@@ -338,7 +351,7 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 
 No son deuda: decisiones de producto documentadas en `05_current_status.md`.
 
-- Autenticación y autorización
+- JWT / login / passwords / autorización por roles (infraestructura Authentication en Sprint 16; autenticación real pendiente Sprint 17)
 - Sincronización offline
 - Event Bus distribuido (RabbitMQ, Redis)
 - Almacenamiento en nube

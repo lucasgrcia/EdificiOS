@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 
 import { ApplicationConfigModule } from './config/application-config.module';
+import { AuthenticationModule } from './authentication/authentication.module';
 import { HealthModule } from './health/health.module';
 import { InfoModule } from './info/info.module';
 import { OperationsModule } from './operations/operations.module';
@@ -15,6 +16,7 @@ import { SharedModule } from './shared/shared.module';
     ApplicationConfigModule,
     SharedModule,
     OperationsModule,
+    AuthenticationModule,
     HealthModule,
     InfoModule,
   ],

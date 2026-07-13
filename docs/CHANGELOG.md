@@ -6,6 +6,53 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.16.0-alpha] - 2026-07-13
+
+### Added
+
+#### Sprint 16 — Authentication Query Model (PR1)
+
+- Módulo independiente `src/authentication/` (application, infrastructure, persistence).
+- `AuthenticatedUserView`, puerto `UserQueryRepository`, `PostgresUserQueryRepository`.
+- `GetAuthenticatedUserUseCase` — delegación al repositorio de lectura.
+- Tabla `users` (`001_users.sql`); migración en módulo Authentication.
+- `AuthenticationModule` autocontenido; sin dependencias desde Operations.
+
+#### Sprint 16 — HTTP Query API (PR2)
+
+- `GET /api/v1/authentication/users/:id` → `AuthenticatedUserView`.
+- `AuthenticatedUserController` + `GetAuthenticatedUserParamsPipe` (UUID, trim, lowercase).
+- 404 cuando el usuario no existe; validación HTTP en pipe.
+
+#### Sprint 16 — Create User (PR3)
+
+- `POST /api/v1/authentication/users` → `{ userId }` (201).
+- `CreateUserUseCase`, puerto `UserPersistence`, `PostgresUserRepository`, `UserRecord`.
+- CQRS: repositorio de escritura separado del query repository.
+- `CreateUserRequestPipe` — email/displayName obligatorios, trim, email lowercase.
+
+#### Sprint 16 — Current User + Authentication Context (PR4)
+
+- Puerto `AuthenticationContext` (`getCurrentUserId()`).
+- `StubAuthenticationContext` — stub fijo `11111111-1111-1111-1111-111111111111` (sin JWT ni headers).
+- `GetCurrentUserUseCase` — context → query → `AuthenticatedUserView` o 401.
+- `GET /api/v1/authentication/me` — usuario actual vía contexto.
+
+#### Sprint 16 — Documentación y cierre (PR5)
+
+- Sprint 16 marcado como COMPLETADO en `docs/05_current_status.md`.
+- Sección **Authentication Architecture** en estado del proyecto.
+- Glosario: Authentication Context, Authenticated User, Current User, User Query/Command Model, Stub Authentication.
+- `docs/architecture_reviews/sprint_16_authentication_foundation.md` (Architecture Review).
+
+### Changed
+
+- Bounded context **Authentication** operativo: query model, command model, HTTP APIs y contexto preparado para JWT (Sprint 17).
+- `scripts/migrate.js` aplica migraciones de Operations y Authentication.
+- `docs/architecture_backlog.md`: ítems resueltos (Query API, Create User, Authentication Context); deuda Sprint 16 (JWT, passwords, login, refresh, authorization).
+
+---
+
 ## [0.15.0-alpha] - 2026-07-13
 
 ### Added

@@ -43,26 +43,38 @@ async function migrate() {
     process.exit(1);
   }
 
-  const migrationsDir = join(
-    __dirname,
-    '..',
-    'src',
-    'operations',
-    'infrastructure',
-    'migrations',
-  );
-  const files = readdirSync(migrationsDir)
-    .filter((file) => file.endsWith('.sql'))
-    .sort();
+  const migrationDirectories = [
+    join(__dirname, '..', 'src', 'operations', 'infrastructure', 'migrations'),
+    join(
+      __dirname,
+      '..',
+      'src',
+      'authentication',
+      'infrastructure',
+      'persistence',
+      'migrations',
+    ),
+  ];
+
+  const files = migrationDirectories
+    .flatMap((migrationsDir) =>
+      readdirSync(migrationsDir)
+        .filter((file) => file.endsWith('.sql'))
+        .map((file) => ({
+          file,
+          path: join(migrationsDir, file),
+        })),
+    )
+    .sort((left, right) => left.path.localeCompare(right.path));
 
   const client = new Client({ connectionString });
   await client.connect();
 
   try {
-    for (const file of files) {
-      const sql = readFileSync(join(migrationsDir, file), 'utf8');
+    for (const migration of files) {
+      const sql = readFileSync(migration.path, 'utf8');
       await client.query(sql);
-      console.log(`Applied ${file}`);
+      console.log(`Applied ${migration.file}`);
     }
   } finally {
     await client.end();
