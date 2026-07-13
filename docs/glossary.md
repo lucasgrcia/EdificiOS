@@ -383,7 +383,7 @@ Configuración centralizada de la aplicación. Singleton inyectable vía `Applic
 
 **Módulo:** `src/config/application-config.ts`.
 
-**Propiedades MVP:** `name`, `version`, `environment`, `apiPrefix`, `swaggerPath`.
+**Propiedades MVP:** `name`, `version`, `environment`, `apiPrefix`, `swaggerPath`, `jwtSecret`, `jwtIssuer`, `jwtAudience`, `jwtExpiration`.
 
 **Consumidores:** `GetApiInfoUseCase`, `setupSwagger`. Independiente de Operations.
 
@@ -395,13 +395,71 @@ Configuración centralizada de la aplicación. Singleton inyectable vía `Applic
 
 Puerto de Application que resuelve **quién es el usuario actual** en un request HTTP.
 
-**Interfaz MVP:** `getCurrentUserId(): string | null`.
+**Interfaz:** `getCurrentUserId(): string | null`.
 
 **Módulo:** `src/authentication/application/authentication-context.ts`.
 
-**Implementación Sprint 16:** `StubAuthenticationContext` — devuelve siempre `11111111-1111-1111-1111-111111111111`; no lee JWT ni headers.
+**Implementación actual (Sprint 17):** `JWTAuthenticationContext` — valida JWT y extrae claim `userId`.
 
-**Sprint 17:** implementación basada en JWT sin modificar use cases ni controllers.
+**No confundir con:** `JwtAuthenticationGuard` (capa HTTP que exige identidad) ni `Actor` (Operations).
+
+---
+
+### JWTAuthenticationContext
+
+Implementación de `AuthenticationContext` basada en JWT.
+
+**Módulo:** `src/authentication/infrastructure/http/jwt-authentication-context.ts`.
+
+**Comportamiento:**
+- Lee `Authorization: Bearer <token>` vía `AuthenticationHttpContext`
+- Valida JWT con `@nestjs/jwt` y configuración de `ApplicationConfig`
+- Extrae claim `userId` (UUID)
+- Devuelve `string | null` — **sin lanzar excepciones**
+
+**No hace:** emitir tokens, login, ni proteger endpoints HTTP (eso es responsabilidad del guard).
+
+---
+
+### JwtAuthenticationGuard
+
+Guard HTTP de NestJS que exige autenticación en endpoints protegidos.
+
+**Módulo:** `src/authentication/infrastructure/http/jwt-authentication.guard.ts`.
+
+**Dependencia única:** `AuthenticationContext` (no valida JWT directamente).
+
+**Comportamiento:**
+- `getCurrentUserId() === null` → `UnauthorizedException`
+- UUID válido → permite continuar
+
+**Aplicado en Sprint 17:** `GET /api/v1/authentication/me` únicamente.
+
+---
+
+### Bearer Authentication
+
+Esquema de seguridad HTTP documentado en OpenAPI/Swagger.
+
+**Formato:** `Authorization: Bearer <token>`
+
+**OpenAPI:** `type: http`, `scheme: bearer`, `bearerFormat: JWT`.
+
+**Runtime:** `JWTAuthenticationContext` parsea y valida el token; el guard exige presencia de identidad en `/me`.
+
+**Documentación:** esquema Bearer en `setup-swagger.ts`; `GET /me` marcado como protegido en Sprint 17 PR4.
+
+---
+
+### JWT
+
+JSON Web Token usado como mecanismo de autenticación en el bounded context Authentication.
+
+**Claim MVP:** `userId` (UUID del usuario en tabla `users`).
+
+**Configuración:** `ApplicationConfig` — `jwtSecret`, `jwtIssuer`, `jwtAudience`, `jwtExpiration`.
+
+**Sprint 17:** validación en runtime vía `JWTAuthenticationContext`; **sin emisión** de tokens ni endpoint de login.
 
 ---
 
@@ -420,6 +478,8 @@ Vista de lectura (`AuthenticatedUserView`) que representa un usuario persistido 
 Usuario autenticado **en el contexto del request actual**, expuesto vía `GET /api/v1/authentication/me`.
 
 **Use case:** `GetCurrentUserUseCase` — lee `AuthenticationContext`, delega a `GetAuthenticatedUserUseCase`.
+
+**Protección HTTP (Sprint 17):** `JwtAuthenticationGuard` + JWT Bearer obligatorio.
 
 **No es:** login ni sesión; solo resolución de identidad desde el contexto.
 
@@ -447,13 +507,35 @@ Capa de escritura CQRS del bounded context Authentication.
 
 ### Stub Authentication
 
-Implementación temporal de `AuthenticationContext` para desarrollo y pruebas sin JWT.
+Implementación temporal de `AuthenticationContext` usada en Sprint 16.
 
-**Clase:** `StubAuthenticationContext`.
+**Estado:** eliminada en Sprint 17; sustituida por `JWTAuthenticationContext`.
 
-**Comportamiento:** `getCurrentUserId()` retorna UUID fijo; sin acceso al request HTTP.
+**Histórico:** `StubAuthenticationContext` devolvía UUID fijo sin leer headers.
 
-**Propósito:** permitir que Sprint 17 reemplace el stub por JWT sin cambiar la arquitectura.
+---
+
+### AuthenticationContext vs JWTAuthenticationContext vs JwtAuthenticationGuard
+
+| Concepto | Responsabilidad | Valida JWT | Lanza excepciones | Capa |
+|----------|-----------------|------------|-------------------|------|
+| **AuthenticationContext** | Contrato: resolver `userId` del request | No (es interfaz) | No | Application (puerto) |
+| **JWTAuthenticationContext** | Leer Bearer, validar JWT, extraer `userId` | Sí | No — devuelve `null` | Infrastructure |
+| **JwtAuthenticationGuard** | Exigir identidad antes del handler HTTP | No — delega al contexto | Sí — `UnauthorizedException` | Infrastructure (HTTP) |
+
+**Flujo `GET /me`:**
+
+```
+Authorization: Bearer <JWT>
+    ↓
+AuthenticationContextMiddleware
+    ↓
+JwtAuthenticationGuard → AuthenticationContext.getCurrentUserId()
+    ↓ (si UUID)
+GetCurrentUserUseCase → GetAuthenticatedUserUseCase → AuthenticatedUserView
+```
+
+El use case **no** conoce JWT ni guards. El guard **no** parsea tokens.
 
 ---
 
@@ -461,8 +543,9 @@ Implementación temporal de `AuthenticationContext` para desarrollo y pruebas si
 
 | Concepto | Responsabilidad | Cuándo actúa | Dónde vive |
 |----------|-----------------|--------------|------------|
-| **Authentication Context** | Resolver el `userId` del request actual | Antes del use case de current user | `application/authentication-context.ts` + implementación en `infrastructure/http/` |
-| **JWT Provider** (Sprint 17) | Validar token y extraer `userId` del claim | Sustituye al stub en runtime | `infrastructure/` (futuro) |
+| **Authentication Context** | Resolver el `userId` del request actual | Antes del use case de current user | `application/authentication-context.ts` + `JWTAuthenticationContext` |
+| **JWTAuthenticationContext** | Validar token Bearer y extraer `userId` | Implementación del puerto en runtime | `infrastructure/http/jwt-authentication-context.ts` |
+| **JwtAuthenticationGuard** | Bloquear HTTP sin identidad | Antes del handler en `/me` | `infrastructure/http/jwt-authentication.guard.ts` |
 | **Controller** | Adaptar HTTP → command/query; sin lógica de negocio | En el borde HTTP | `infrastructure/http/authenticated-user.controller.ts` |
 | **Use Case** | Orquestar context + repositorios; reglas de aplicación mínimas | Application layer | `application/get-current-user-use-case.ts`, etc. |
 
@@ -475,7 +558,7 @@ GET /me → Controller → GetCurrentUserUseCase
               → AuthenticatedUserView
 ```
 
-El controller **no** conoce JWT. El use case **no** parsea headers. Solo el proveedor de contexto cambia entre sprints.
+El controller **no** valida JWT. El use case **no** parsea headers. El guard delega identidad al contexto.
 
 ---
 
@@ -709,19 +792,20 @@ GET /api/docs-json   → especificación OpenAPI
 GET /api/v1/info     → ApplicationConfig (name, version, environment)
 ```
 
-Authentication (Sprint 16):
+Authentication (Sprint 16–17):
 
 ```
-POST /api/v1/authentication/users
+POST /api/v1/authentication/users          (público)
   └── CreateUserUseCase → UserPersistence → users
 
-GET /api/v1/authentication/users/:id
+GET /api/v1/authentication/users/:id       (público)
   └── GetAuthenticatedUserUseCase → UserQueryRepository → users
 
-GET /api/v1/authentication/me
-  └── GetCurrentUserUseCase
-        ├── AuthenticationContext (Stub en Sprint 16)
-        └── GetAuthenticatedUserUseCase → users
+GET /api/v1/authentication/me              (protegido — Bearer JWT)
+  └── JwtAuthenticationGuard
+        └── JWTAuthenticationContext (valida JWT → userId)
+              └── GetCurrentUserUseCase
+                    └── GetAuthenticatedUserUseCase → users
 ```
 
 ---

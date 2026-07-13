@@ -6,6 +6,59 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.17.0-alpha] - 2026-07-13
+
+### Added
+
+#### Sprint 17 — Authentication Query API (operativo)
+
+- `GET /api/v1/authentication/users/:id` → `AuthenticatedUserView` (Sprint 16 PR2; confirmado operativo en Sprint 17).
+- `GetAuthenticatedUserUseCase`, `UserQueryRepository`, `PostgresUserQueryRepository`.
+
+#### Sprint 17 — User Creation (operativo)
+
+- `POST /api/v1/authentication/users` → `{ userId }` (201) (Sprint 16 PR3; confirmado operativo en Sprint 17).
+- `CreateUserUseCase`, `UserPersistence`, `PostgresUserRepository`.
+
+#### Sprint 17 — AuthenticationContext (PR2)
+
+- Puerto `AuthenticationContext` (`getCurrentUserId(): string | null`) sin cambios de contrato.
+- `JWTAuthenticationContext` — lee `Authorization: Bearer`, valida JWT, extrae claim `userId`; devuelve `null` si falla (sin excepciones).
+- `AuthenticationJwtModule` (`@nestjs/jwt`); configuración JWT desde `ApplicationConfig` (`jwtSecret`, `jwtIssuer`, `jwtAudience`, `jwtExpiration`).
+- `AuthenticationHttpContext` + `AuthenticationContextMiddleware` (AsyncLocalStorage) para propagar el header por request.
+
+#### Sprint 17 — JwtAuthenticationGuard (PR3)
+
+- `JwtAuthenticationGuard` — depende solo de `AuthenticationContext`; lanza `UnauthorizedException` si `getCurrentUserId()` es `null`.
+- `GET /api/v1/authentication/me` protegido con `@UseGuards(JwtAuthenticationGuard)`.
+- Endpoints públicos sin cambios: `POST /users`, `GET /users/:id`, Operations, Health, Info, Swagger.
+
+#### Sprint 17 — Swagger Bearer Authentication (PR4)
+
+- Esquema OpenAPI Bearer (`type: http`, `scheme: bearer`, `bearerFormat: JWT`).
+- Descripción del esquema: `Authorization: Bearer <token>`.
+- `GET /api/v1/authentication/me` documentado como protegido; descripción *"Requires a valid Bearer JWT."*
+- Endpoints públicos documentados con `security: []`.
+
+#### Sprint 17 — Documentación y cierre (PR5)
+
+- Sprint 17 marcado como COMPLETADO en `docs/05_current_status.md`.
+- Glosario: `JWTAuthenticationContext`, `JwtAuthenticationGuard`, Bearer Authentication, JWT; tabla comparativa de responsabilidades.
+- `docs/architecture_reviews/sprint_17_authentication.md` (Architecture Review).
+- `docs/architecture_backlog.md`: Stub Authentication y JWT Authentication resueltos; deuda Sprint 17 (refresh, passwords, login, roles, permisos, políticas).
+
+### Changed
+
+- `StubAuthenticationContext` eliminado; `AUTHENTICATION_CONTEXT` registra `JWTAuthenticationContext`.
+- Autenticación JWT operativa en runtime para `GET /me`; sin login, emisión de tokens ni autorización por roles.
+- `GetCurrentUserUseCase` y lógica del controller sin cambios funcionales; guard y contexto JWT en Infrastructure.
+
+### Removed
+
+- `StubAuthenticationContext` y export `STUB_USER_ID`.
+
+---
+
 ## [0.16.0-alpha] - 2026-07-13
 
 ### Added

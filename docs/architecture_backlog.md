@@ -11,7 +11,7 @@ Este documento es la **fuente canónica** de ítems P1 y P2. `docs/05_current_st
 - No agregar ítems sin justificación vinculada a una review, ADR o Field Story.
 - Al cerrar un ítem, marcarlo como resuelto con sprint y PR.
 
-Última consolidación: 2026-07-13 (post Sprint 16).
+Última consolidación: 2026-07-13 (post Sprint 17).
 
 ---
 
@@ -246,16 +246,16 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | SHA-256 verifica integridad, no identidad | `05_current_status.md` | Sin deduplicación por hash; dos capturas idénticas son dos Evidence distintas. |
 | Datos legacy con `site_id` huérfano | Sprint 5 Review | Migración `006` después de `004`/`005`. Bootstrap: Site primero. |
 
-### Sprint 16 — Authentication (futuro)
+### Sprint 17 — Authentication (futuro)
 
 | Ítem | Origen | Justificación |
 |------|--------|---------------|
-| JWT Authentication | Sprint 16 PR4 | `StubAuthenticationContext` sin validación de tokens; Bearer en OpenAPI sin runtime |
-| Password Hashing | Sprint 16 PR3 | `CreateUserUseCase` persiste usuario sin password ni hash |
-| Login endpoint | Sprint 16 PR3 | Solo `POST /users` (registro); sin flujo de autenticación |
-| Refresh Tokens | Sprint 16 PR4 | Sin emisión ni rotación de tokens |
-| Authorization (Roles/Permissions) | Sprint 15 PR3, Sprint 16 | Sin guards ni políticas por endpoint |
-| Session Revocation | Sprint 16 PR4 | Sin blacklist ni invalidación de tokens activos |
+| Refresh Tokens | Sprint 16 PR4, Sprint 17 | Sin emisión ni rotación de tokens; solo validación de JWT externo |
+| Password Hashing | Sprint 16 PR3, Sprint 17 | `CreateUserUseCase` persiste usuario sin password ni hash |
+| Login Credentials | Sprint 16 PR3, Sprint 17 | Solo `POST /users` (registro); sin endpoint de login ni verificación de credenciales |
+| Roles | Sprint 15 PR3, Sprint 17 | Sin modelo de roles ni asignación por usuario |
+| Permissions | Sprint 15 PR3, Sprint 17 | Sin permisos granulares por endpoint o recurso |
+| Authorization Policies | Sprint 15 PR3, Sprint 17 | Sin guards ni políticas de autorización más allá de autenticación en `/me` |
 
 ### Sprint 15 — API Platform (futuro)
 
@@ -344,6 +344,10 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | Authentication Query API | Sprint 16 PR2 | `GET /api/v1/authentication/users/:id` + `GetAuthenticatedUserUseCase` |
 | Create User (Command API) | Sprint 16 PR3 | `POST /api/v1/authentication/users` + `CreateUserUseCase` |
 | Authentication Context (stub) | Sprint 16 PR4 | Puerto `AuthenticationContext` + `StubAuthenticationContext` + `GET /me` |
+| Stub Authentication | Sprint 16 PR4 | Sustituido por `JWTAuthenticationContext` en Sprint 17 PR2 |
+| JWT Authentication | Sprint 17 PR2 | `JWTAuthenticationContext` valida Bearer JWT; config en `ApplicationConfig` |
+| JWT HTTP Guard | Sprint 17 PR3 | `JwtAuthenticationGuard` en `GET /api/v1/authentication/me` |
+| Swagger Bearer Authentication | Sprint 17 PR4 | Esquema Bearer en OpenAPI; `/me` documentado como protegido |
 
 ---
 
@@ -351,7 +355,7 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 
 No son deuda: decisiones de producto documentadas en `05_current_status.md`.
 
-- JWT / login / passwords / autorización por roles (infraestructura Authentication en Sprint 16; autenticación real pendiente Sprint 17)
+- Login / passwords / emisión de JWT / refresh tokens / roles / permisos / políticas de autorización (validación JWT operativa en `GET /me`; sin flujo de credenciales ni autorización)
 - Sincronización offline
 - Event Bus distribuido (RabbitMQ, Redis)
 - Almacenamiento en nube

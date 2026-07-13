@@ -15,7 +15,12 @@ import { RegisterActorRequestDto } from '../../../operations/infrastructure/http
 import { RegisterAssetRequestDto } from '../../../operations/infrastructure/http/register-asset.dto';
 import { RegisterSiteRequestDto } from '../../../operations/infrastructure/http/register-site.dto';
 import { StartShiftRequestDto } from '../../../operations/infrastructure/http/start-shift.dto';
+import { CreateUserRequestDto } from '../../../authentication/infrastructure/http/create-user.dto';
 import { ProblemDetailsSchema } from './problem-details.schema';
+import {
+  CURRENT_USER_AUTH_DESCRIPTION,
+  SECURITY_SCHEME_BEARER,
+} from './swagger.constants';
 
 type HttpMethod = 'get' | 'post';
 
@@ -24,6 +29,7 @@ type EndpointDocumentation = {
   method: HttpMethod;
   tags: string[];
   summary: string;
+  description?: string;
   requestBodyDto?: new () => object;
   multipart?: boolean;
   queryParameters?: Array<{
@@ -33,6 +39,7 @@ type EndpointDocumentation = {
   }>;
   successStatus: '200' | '201';
   successDescription: string;
+  security?: Array<Record<string, string[]>>;
 };
 
 const PROBLEM_DETAILS_REF = { $ref: getSchemaPath(ProblemDetailsSchema) };
@@ -78,6 +85,35 @@ const ENDPOINTS: EndpointDocumentation[] = [
     summary: 'API metadata',
     successStatus: '200',
     successDescription: 'API name, version and architecture metadata.',
+  },
+  {
+    path: '/api/v1/authentication/users',
+    method: 'post',
+    tags: ['Authentication'],
+    summary: 'Create user',
+    requestBodyDto: CreateUserRequestDto,
+    successStatus: '201',
+    successDescription: 'User created.',
+    security: [],
+  },
+  {
+    path: '/api/v1/authentication/users/{id}',
+    method: 'get',
+    tags: ['Authentication'],
+    summary: 'Get user by id',
+    successStatus: '200',
+    successDescription: 'Authenticated user view.',
+    security: [],
+  },
+  {
+    path: '/api/v1/authentication/me',
+    method: 'get',
+    tags: ['Authentication'],
+    summary: 'Get current user',
+    description: CURRENT_USER_AUTH_DESCRIPTION,
+    successStatus: '200',
+    successDescription: 'Current authenticated user.',
+    security: [{ [SECURITY_SCHEME_BEARER]: [] }],
   },
   {
     path: '/api/v1/operations/assets',
@@ -433,7 +469,11 @@ export function enrichOpenApiDocument(document: OpenAPIObject): void {
 
     operation.tags = endpoint.tags;
     operation.summary = endpoint.summary;
-    operation.security = [];
+    operation.security = endpoint.security ?? [];
+
+    if (endpoint.description !== undefined) {
+      operation.description = endpoint.description;
+    }
 
     const requestBody = buildRequestBody(endpoint);
 

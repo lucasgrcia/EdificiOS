@@ -26,6 +26,10 @@ describe('ApplicationConfig integration', () => {
       expect(applicationConfig.environment).toBe('development');
       expect(applicationConfig.apiPrefix).toBe('/api/v1');
       expect(applicationConfig.swaggerPath).toBe('/api/docs');
+      expect(applicationConfig.jwtSecret).toBe('edificios-dev-jwt-secret');
+      expect(applicationConfig.jwtIssuer).toBe('edificios-api');
+      expect(applicationConfig.jwtAudience).toBe('edificios-clients');
+      expect(applicationConfig.jwtExpiration).toBe('1h');
     });
 
     it('provides ApplicationConfig as a singleton', async () => {

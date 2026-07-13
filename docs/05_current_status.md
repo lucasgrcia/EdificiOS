@@ -2,7 +2,7 @@
 
 Última actualización: 2026-07-13
 
-Sprint 16 — cerrado.
+Sprint 17 — cerrado.
 
 ---
 
@@ -13,14 +13,14 @@ Sprint 16 — cerrado.
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Tests | 603/603 OK |
+| Tests | 621/621 OK |
 | Build | OK |
 
 ---
 
 ## Estado actual
 
-El sistema posee **ocho agregados/módulos operativos**, todos integrados en el bounded context `operations`:
+El sistema posee **ocho agregados operativos** en el bounded context `operations` y **un bounded context `authentication`** independiente:
 
 | Módulo | Rol | Integración |
 |--------|-----|-------------|
@@ -33,6 +33,9 @@ El sistema posee **ocho agregados/módulos operativos**, todos integrados en el 
 | **WorkOrder** | Orden de trabajo derivada de Incident | Incident (Application) |
 | **Notification** | Mensaje operativo + read model de consulta | Commands: `CreateNotificationUseCase`; Queries: `NotificationQueryRepository` |
 | **Timeline** | Read model cronológico por Incident | `events`, `event_evidences`, `work_orders`, `notifications`; enriquecido Sprint 12 |
+| **Authentication** | Identidad de usuario (query, command, JWT) | Bounded context independiente; tabla `users`; sin dependencia de Operations |
+
+Módulos transversales: `health`, `info`, `shared`, `config`.
 
 Cadena operativa completa:
 
@@ -285,6 +288,16 @@ Timeline (GetIncidentTimelineUseCase)
 | PR4 | Current User + `AuthenticationContext` stub (`GET /api/v1/authentication/me`) | ✔ |
 | PR5 | Documentación + Architecture Review | ✔ |
 
+### Sprint 17 — JWT Authentication (Context + Guard + Swagger)
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | `JWTAuthenticationContext` + `AuthenticationJwtModule` + config JWT en `ApplicationConfig` | ✔ |
+| PR2 | Reemplazo de `StubAuthenticationContext` por JWT en runtime | ✔ |
+| PR3 | `JwtAuthenticationGuard` en `GET /api/v1/authentication/me` | ✔ |
+| PR4 | Swagger Bearer Authentication (OpenAPI) | ✔ |
+| PR5 | Documentación + Architecture Review | ✔ |
+
 ---
 
 ## Funcionalidades implementadas
@@ -530,36 +543,41 @@ Estado: **operativo** (Sprint 15 PR1–PR4).
 
 ### Authentication
 
-Módulo independiente `src/authentication/` — bounded context fuera de Operations. **No implementa autenticación real** (sin JWT, login ni passwords en Sprint 16); construye la infraestructura necesaria para Sprint 17.
+Módulo independiente `src/authentication/` — bounded context fuera de Operations. **Autenticación JWT operativa** para el usuario actual (`GET /me`); sin login, emisión de tokens, passwords ni autorización por roles.
 
 | Capacidad | Estado |
 |-----------|--------|
-| Query Model | ✔ |
-| Command Model | ✔ |
-| HTTP Query API | ✔ |
-| HTTP Command API | ✔ |
-| Current User endpoint | ✔ |
-| Authentication Context | ✔ |
-| Arquitectura preparada para JWT | ✔ |
+| User Query | ✔ |
+| User Creation | ✔ |
+| Current User | ✔ |
+| JWT Authentication | ✔ |
+| HTTP Guard | ✔ |
+| Swagger Authentication | ✔ |
 
 | Operación | Endpoint | Detalle |
 |-----------|----------|---------|
-| Get user by id | `GET /api/v1/authentication/users/:id` | `AuthenticatedUserView`; 404 si no existe |
-| Create user | `POST /api/v1/authentication/users` | Body: `email`, `displayName`; 201 `{ userId }` |
-| Current user | `GET /api/v1/authentication/me` | Usuario del `AuthenticationContext`; 401 si contexto o usuario inválido |
+| Get user by id | `GET /api/v1/authentication/users/:id` | `AuthenticatedUserView`; 404 si no existe; **público** |
+| Create user | `POST /api/v1/authentication/users` | Body: `email`, `displayName`; 201 `{ userId }`; **público** |
+| Current user | `GET /api/v1/authentication/me` | Requiere `Authorization: Bearer <JWT>`; `JwtAuthenticationGuard` + `GetCurrentUserUseCase`; 401 sin token válido |
 
 **Tabla:** `users` (`id`, `email`, `display_name`, `status`, `created_at`). Migración `src/authentication/infrastructure/persistence/migrations/001_users.sql`.
 
-Estado: **operativo** (Sprint 16 PR1–PR4).
+**Config JWT:** `ApplicationConfig` — `jwtSecret`, `jwtIssuer`, `jwtAudience`, `jwtExpiration`.
+
+Estado: **operativo** (Sprint 16 PR1–PR4 + Sprint 17 PR1–PR4).
 
 ### Authentication Architecture
 
 Capa de identidad desacoplada de Operations. CQRS ligero: `PostgresUserQueryRepository` (lectura) y `PostgresUserRepository` (escritura) sobre la misma tabla `users`.
 
 ```
-HTTP
+HTTP Request
     ↓
-AuthenticationContext (StubAuthenticationContext en Sprint 16)
+AuthenticationContextMiddleware → AuthenticationHttpContext (Authorization header)
+    ↓
+JwtAuthenticationGuard (solo GET /me)
+    ↓
+AuthenticationContext (JWTAuthenticationContext)
     ↓
 Use Cases (GetAuthenticatedUser, CreateUser, GetCurrentUser)
     ↓
@@ -568,9 +586,16 @@ Repositories (UserQueryRepository / UserPersistence)
 PostgreSQL (users)
 ```
 
-El **AuthenticationContext** resuelve quién es el usuario actual. En Sprint 16 la implementación es un **stub** que devuelve siempre `11111111-1111-1111-1111-111111111111` — no lee headers ni JWT.
+**Separación de responsabilidades:**
 
-**Sprint 17:** sustituir `StubAuthenticationContext` por un proveedor basado en JWT **sin modificar** controllers ni use cases (solo cambio de wiring en `AuthenticationModule`).
+| Componente | Capa | Rol |
+|------------|------|-----|
+| `AuthenticationContext` | Application (puerto) | Contrato `getCurrentUserId()` |
+| `JWTAuthenticationContext` | Infrastructure | Valida JWT, extrae `userId`; devuelve `null` si falla |
+| `JwtAuthenticationGuard` | Infrastructure | Exige identidad en HTTP; `UnauthorizedException` si contexto es `null` |
+| `GetCurrentUserUseCase` | Application | Orquesta contexto + query; sin conocer JWT ni headers |
+
+El guard **no valida JWT** directamente — delega en `AuthenticationContext`. Operations, Health, Info y Swagger permanecen públicos en este sprint.
 
 ---
 
@@ -600,7 +625,7 @@ Migraciones en `src/operations/infrastructure/migrations/` y `src/authentication
 ## Tests
 
 ```
-61 test suites — 603 tests — 0 fallos
+63 test suites — 621 tests — 0 fallos
 ```
 
 | Área | Archivos |
@@ -611,7 +636,7 @@ Migraciones en `src/operations/infrastructure/migrations/` y `src/authentication
 | Casos de uso | `detect-incident`, `assign-incident`, `resolve-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order`, `create-notification`, `notification-query`, `get-incident-timeline`, `get-operations-dashboard`, `create-user` |
 | HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `notification-query.http`, `dashboard.http`, `health.http`, `info.http`, `correlation-id.http`, `problem-details.http`, `http-validation.http`, `swagger.http`, `authentication-query.http`, `create-user.http`, `current-user.http` |
 | API Platform | `problem-details.http.integration.spec.ts`, `http-validation.integration.spec.ts`, `swagger.http.integration.spec.ts`, `application-config.integration.spec.ts` |
-| Authentication | `authentication-query.integration.spec.ts`, `authentication-query.http.integration.spec.ts`, `create-user.integration.spec.ts`, `create-user.http.integration.spec.ts`, `current-user.http.integration.spec.ts` |
+| Authentication | `authentication-query.integration.spec.ts`, `authentication-query.http.integration.spec.ts`, `create-user.integration.spec.ts`, `create-user.http.integration.spec.ts`, `current-user.http.integration.spec.ts`, `jwt-authentication-context.integration.spec.ts`, `jwt-authentication-guard.integration.spec.ts` |
 | Observability | `application-logger.integration.spec.ts`, `application-metrics.integration.spec.ts` |
 | Repositorios / Query | `postgres-*-repository.integration.spec.ts`, `postgres-incident-timeline-repository.integration.spec.ts` |
 | Transacciones | `postgres-operations-transaction-runner.integration.spec.ts` |
@@ -634,7 +659,7 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - Health / Info: módulos independientes de Operations; Health verifica pool PostgreSQL; Info expone metadatos constantes.
 - Observability: Correlation ID + Application Logger + Application Metrics en `SharedModule` (Sprint 14); propagación a Event Log y Outbox.
 - API Platform: Problem Details (RFC 9457) + HTTP Validation global + Swagger/OpenAPI + `ApplicationConfig` (Sprint 15).
-- Authentication: query/command CQRS + `AuthenticationContext` stub + HTTP APIs; preparado para JWT (Sprint 16).
+- Authentication: query/command CQRS + JWT (`JWTAuthenticationContext`) + guard HTTP + Swagger Bearer; `GET /me` protegido (Sprint 16–17).
 - Query repositories: `IncidentQuery`, `EvidenceQuery`, `EventQuery`, `WorkOrderQuery`, `NotificationQuery`, `IncidentTimeline`.
 - Evidence respalda Domain Events, no Incident (ADR-006).
 - Site es agregado explícito; Asset referencia Site por identidad (ADR-007).
@@ -645,13 +670,13 @@ Documentación de decisiones: `docs/architecture_decisions/`.
 
 Glosario ubicuo: `docs/glossary.md`. Deuda arquitectónica: `docs/architecture_backlog.md`.
 
-Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`, `docs/architecture_reviews/sprint_13_operational_endpoints.md`, `docs/architecture_reviews/sprint_14_observability.md`, `docs/architecture_reviews/sprint_15_api_platform.md`, `docs/architecture_reviews/sprint_16_authentication_foundation.md`.
+Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`, `docs/architecture_reviews/sprint_13_operational_endpoints.md`, `docs/architecture_reviews/sprint_14_observability.md`, `docs/architecture_reviews/sprint_15_api_platform.md`, `docs/architecture_reviews/sprint_16_authentication_foundation.md`, `docs/architecture_reviews/sprint_17_authentication.md`.
 
 ---
 
 ## Deliberadamente ausente
 
-- JWT / login / passwords / autorización por roles (infraestructura Authentication lista; autenticación real en Sprint 17)
+- Login / passwords / emisión de JWT / refresh tokens / autorización por roles (validación JWT operativa en `GET /me`; sin flujo de login ni permisos)
 - Sincronización offline
 - Concurrencia optimista
 - Event Bus distribuido (RabbitMQ, Redis)
@@ -690,6 +715,6 @@ Deuda futura Sprint 14 (Observability): integración Prometheus, exportador Open
 
 Deuda futura Sprint 15 (API Platform): autorización, rate limiting, versionado múltiple (v2), generación automática de SDKs OpenAPI, configuración desde variables de entorno.
 
-Deuda futura Sprint 16 (Authentication): JWT Authentication, password hashing, login endpoint, refresh tokens, authorization (roles/permissions), session revocation.
+Deuda futura Sprint 17 (Authentication): refresh tokens, password hashing, login credentials, roles, permissions, authorization policies.
 
 Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`.

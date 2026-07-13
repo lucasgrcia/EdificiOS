@@ -1,10 +1,8 @@
 import { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
-import {
-  ApplicationConfig,
-  resolveSwaggerRoutePath,
-} from '../../../config/application-config';
+import { ApplicationConfig, resolveSwaggerRoutePath } from '../../../config/application-config';
+import { CreateUserRequestDto } from '../../../authentication/infrastructure/http/create-user.dto';
 import { AssignIncidentRequestDto } from '../../../operations/infrastructure/http/assign-incident.dto';
 import { CreateWorkOrderFromIncidentRequestDto } from '../../../operations/infrastructure/http/create-work-order-from-incident.dto';
 import { CreateWorkOrderRequestDto } from '../../../operations/infrastructure/http/create-work-order.dto';
@@ -17,10 +15,11 @@ import { RegisterSiteRequestDto } from '../../../operations/infrastructure/http/
 import { StartShiftRequestDto } from '../../../operations/infrastructure/http/start-shift.dto';
 import { enrichOpenApiDocument } from './openapi-enrichment';
 import { ProblemDetailsSchema } from './problem-details.schema';
-import { API_DESCRIPTION, SECURITY_SCHEME_BEARER } from './swagger.constants';
+import { API_DESCRIPTION, BEARER_AUTH_DESCRIPTION, SECURITY_SCHEME_BEARER } from './swagger.constants';
 
 const SWAGGER_MODELS = [
   ProblemDetailsSchema,
+  CreateUserRequestDto,
   DetectIncidentRequestDto,
   AssignIncidentRequestDto,
   RegisterAssetRequestDto,
@@ -46,8 +45,7 @@ export function setupSwagger(app: INestApplication): void {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        description:
-          'Reserved for future authentication. Not required in the current MVP.',
+        description: BEARER_AUTH_DESCRIPTION,
       },
       SECURITY_SCHEME_BEARER,
     )

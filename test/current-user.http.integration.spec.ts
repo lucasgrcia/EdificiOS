@@ -15,20 +15,26 @@ import { GetCurrentUserUseCase } from '../src/authentication/application/get-cur
 import { AuthenticatedUserController } from '../src/authentication/infrastructure/http/authenticated-user.controller';
 import { CreateUserRequestPipe } from '../src/authentication/infrastructure/http/create-user-request.pipe';
 import { GetAuthenticatedUserParamsPipe } from '../src/authentication/infrastructure/http/get-authenticated-user-params.pipe';
-import {
-  STUB_USER_ID,
-  StubAuthenticationContext,
-} from '../src/authentication/infrastructure/http/stub-authentication-context';
 import { CreateUserUseCase } from '../src/authentication/application/create-user-use-case';
+import { JwtAuthenticationGuard } from '../src/authentication/infrastructure/http/jwt-authentication.guard';
 
 describe('Current user HTTP integration', () => {
+  const currentUserId = '11111111-1111-1111-1111-111111111111';
   const authenticatedUser: AuthenticatedUserView = {
-    id: STUB_USER_ID,
+    id: currentUserId,
     email: 'porter@torre-norte.edificios',
     displayName: 'Carlos Porter',
     status: 'ACTIVE',
     createdAt: '2026-07-10T08:00:00.000Z',
   };
+
+  function createAuthenticationContext(
+    userId: string | null,
+  ): AuthenticationContext {
+    return {
+      getCurrentUserId: () => userId,
+    };
+  }
 
   function createGetCurrentUserUseCase(input: {
     authenticationContext: AuthenticationContext;
@@ -46,7 +52,7 @@ describe('Current user HTTP integration', () => {
         execute: jest.fn().mockResolvedValue(authenticatedUser),
       };
       const useCase = createGetCurrentUserUseCase({
-        authenticationContext: new StubAuthenticationContext(),
+        authenticationContext: createAuthenticationContext(currentUserId),
         getAuthenticatedUserUseCase:
           getAuthenticatedUserUseCase as unknown as GetAuthenticatedUserUseCase,
       });
@@ -55,16 +61,13 @@ describe('Current user HTTP integration', () => {
 
       expect(result).toEqual(authenticatedUser);
       expect(getAuthenticatedUserUseCase.execute).toHaveBeenCalledWith({
-        userId: STUB_USER_ID,
+        userId: currentUserId,
       });
     });
 
     it('throws UnauthorizedException when authentication context returns null', async () => {
-      const authenticationContext: AuthenticationContext = {
-        getCurrentUserId: () => null,
-      };
       const useCase = createGetCurrentUserUseCase({
-        authenticationContext,
+        authenticationContext: createAuthenticationContext(null),
         getAuthenticatedUserUseCase: {
           execute: jest.fn(),
         } as unknown as GetAuthenticatedUserUseCase,
@@ -80,7 +83,7 @@ describe('Current user HTTP integration', () => {
         execute: jest.fn().mockResolvedValue(null),
       };
       const useCase = createGetCurrentUserUseCase({
-        authenticationContext: new StubAuthenticationContext(),
+        authenticationContext: createAuthenticationContext(currentUserId),
         getAuthenticatedUserUseCase:
           getAuthenticatedUserUseCase as unknown as GetAuthenticatedUserUseCase,
       });
@@ -89,7 +92,7 @@ describe('Current user HTTP integration', () => {
         UnauthorizedException,
       );
       expect(getAuthenticatedUserUseCase.execute).toHaveBeenCalledWith({
-        userId: STUB_USER_ID,
+        userId: currentUserId,
       });
     });
   });
@@ -97,21 +100,22 @@ describe('Current user HTTP integration', () => {
   describe('GET /api/v1/authentication/me', () => {
     let app: NestFastifyApplication;
     let getAuthenticatedUserUseCase: { execute: jest.Mock };
-    let authenticationContext: StubAuthenticationContext;
 
     async function createApp(
-      context: AuthenticationContext = new StubAuthenticationContext(),
+      context: AuthenticationContext = createAuthenticationContext(
+        currentUserId,
+      ),
     ) {
       getAuthenticatedUserUseCase = {
         execute: jest.fn().mockResolvedValue(authenticatedUser),
       };
-      authenticationContext = context as StubAuthenticationContext;
 
       const moduleRef = await Test.createTestingModule({
         controllers: [AuthenticatedUserController],
         providers: [
           CreateUserRequestPipe,
           GetAuthenticatedUserParamsPipe,
+          JwtAuthenticationGuard,
           {
             provide: CreateUserUseCase,
             useValue: { execute: jest.fn() },
@@ -159,7 +163,7 @@ describe('Current user HTTP integration', () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual(authenticatedUser);
       expect(getAuthenticatedUserUseCase.execute).toHaveBeenCalledWith({
-        userId: STUB_USER_ID,
+        userId: currentUserId,
       });
     });
 
@@ -181,9 +185,7 @@ describe('Current user HTTP integration', () => {
     });
 
     it('returns 401 when authentication context provides no user id', async () => {
-      await createApp({
-        getCurrentUserId: () => null,
-      });
+      await createApp(createAuthenticationContext(null));
 
       const response = await app.inject({
         method: 'GET',
@@ -205,7 +207,7 @@ describe('Current user HTTP integration', () => {
 
       expect(response.statusCode).toBe(401);
       expect(getAuthenticatedUserUseCase.execute).toHaveBeenCalledWith({
-        userId: STUB_USER_ID,
+        userId: currentUserId,
       });
     });
   });

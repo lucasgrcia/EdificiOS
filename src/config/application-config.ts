@@ -8,6 +8,14 @@ export class ApplicationConfig {
   readonly apiPrefix = '/api/v1';
 
   readonly swaggerPath = '/api/docs';
+
+  readonly jwtSecret = 'edificios-dev-jwt-secret';
+
+  readonly jwtIssuer = 'edificios-api';
+
+  readonly jwtAudience = 'edificios-clients';
+
+  readonly jwtExpiration = '1h';
 }
 
 export function resolveSwaggerRoutePath(swaggerPath: string): string {

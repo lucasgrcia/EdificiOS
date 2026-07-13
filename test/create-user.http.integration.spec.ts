@@ -5,11 +5,16 @@ import {
 import { Test } from '@nestjs/testing';
 
 import { CreateUserUseCase } from '../src/authentication/application/create-user-use-case';
+import {
+  AUTHENTICATION_CONTEXT,
+  AuthenticationContext,
+} from '../src/authentication/application/authentication-context';
 import { AuthenticatedUserController } from '../src/authentication/infrastructure/http/authenticated-user.controller';
 import { CreateUserRequestPipe } from '../src/authentication/infrastructure/http/create-user-request.pipe';
 import { GetAuthenticatedUserParamsPipe } from '../src/authentication/infrastructure/http/get-authenticated-user-params.pipe';
 import { GetAuthenticatedUserUseCase } from '../src/authentication/application/get-authenticated-user-use-case';
 import { GetCurrentUserUseCase } from '../src/authentication/application/get-current-user-use-case';
+import { JwtAuthenticationGuard } from '../src/authentication/infrastructure/http/jwt-authentication.guard';
 
 describe('Create user HTTP integration', () => {
   const userId = '00000000-0000-0000-0000-000000000010';
@@ -27,6 +32,13 @@ describe('Create user HTTP integration', () => {
       providers: [
         CreateUserRequestPipe,
         GetAuthenticatedUserParamsPipe,
+        JwtAuthenticationGuard,
+        {
+          provide: AUTHENTICATION_CONTEXT,
+          useValue: {
+            getCurrentUserId: () => null,
+          } satisfies AuthenticationContext,
+        },
         {
           provide: CreateUserUseCase,
           useValue: createUserUseCase,

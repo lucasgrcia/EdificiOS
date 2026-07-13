@@ -8,6 +8,11 @@ import { AuthenticatedUserView } from '../src/authentication/application/authent
 import { CreateUserUseCase } from '../src/authentication/application/create-user-use-case';
 import { GetAuthenticatedUserUseCase } from '../src/authentication/application/get-authenticated-user-use-case';
 import { GetCurrentUserUseCase } from '../src/authentication/application/get-current-user-use-case';
+import {
+  AUTHENTICATION_CONTEXT,
+  AuthenticationContext,
+} from '../src/authentication/application/authentication-context';
+import { JwtAuthenticationGuard } from '../src/authentication/infrastructure/http/jwt-authentication.guard';
 import { AuthenticatedUserController } from '../src/authentication/infrastructure/http/authenticated-user.controller';
 import { CreateUserRequestPipe } from '../src/authentication/infrastructure/http/create-user-request.pipe';
 import { GetAuthenticatedUserParamsPipe } from '../src/authentication/infrastructure/http/get-authenticated-user-params.pipe';
@@ -35,6 +40,13 @@ describe('Authentication query HTTP integration', () => {
       providers: [
         CreateUserRequestPipe,
         GetAuthenticatedUserParamsPipe,
+        JwtAuthenticationGuard,
+        {
+          provide: AUTHENTICATION_CONTEXT,
+          useValue: {
+            getCurrentUserId: () => null,
+          } satisfies AuthenticationContext,
+        },
         {
           provide: CreateUserUseCase,
           useValue: { execute: jest.fn() },
