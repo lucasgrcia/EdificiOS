@@ -11,7 +11,7 @@ Este documento es la **fuente canónica** de ítems P1 y P2. `docs/05_current_st
 - No agregar ítems sin justificación vinculada a una review, ADR o Field Story.
 - Al cerrar un ítem, marcarlo como resuelto con sprint y PR.
 
-Última consolidación: 2026-07-13 (post Sprint 17).
+Última consolidación: 2026-07-13 (post Sprint 18 — Release Candidate).
 
 ---
 
@@ -246,6 +246,23 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | SHA-256 verifica integridad, no identidad | `05_current_status.md` | Sin deduplicación por hash; dos capturas idénticas son dos Evidence distintas. |
 | Datos legacy con `site_id` huérfano | Sprint 5 Review | Migración `006` después de `004`/`005`. Bootstrap: Site primero. |
 
+### Sprint 18 — Frontend (futuro)
+
+| Ítem | Origen | Justificación |
+|------|--------|---------------|
+| Login real (credenciales) | Sprint 18 PR1/PR5 | UI acepta JWT pegado manualmente; sin endpoint de login ni verificación de password en backend |
+| Refresh token y renovación de sesión | Sprint 18 PR1 | JWT en `localStorage` sin rotación; sesión expira sin recuperación automática |
+| Emisión de JWT desde la aplicación | Sprint 17 + Sprint 18 | Tokens deben generarse externamente para la demo; sin flujo integrado |
+| Paginación en listas UI | Sprint 18 PR2/PR3 | Activity feed, notifications y timeline cargan lotes fijos sin cursor ni offset en cliente |
+| Filtros avanzados en Dashboard | Sprint 18 PR2 | Backend soporta `?actorId=`; UI no expone selector de Actor ni filtros por Site |
+| Listado de incidencias dedicado | Sprint 18 PR3 | Solo navegación desde Activity Feed; sin página `/incidents` con búsqueda |
+| Campos `priority` y `site` en Incident Details | Sprint 18 PR3 | `IncidentView` no expone esos campos; UI muestra `—` |
+| Mark as read en Notifications UI | Sprint 12 + Sprint 18 PR2 | Estado `READ` existe en dominio; sin caso de uso ni interacción en cliente |
+| WorkOrder e Incident actions desde UI | Sprint 18 PR3 | Solo lectura; sin formularios de detect/assign/resolve/create work order |
+| Tests automatizados frontend | Sprint 18 PR5 | Sin unit tests ni E2E (Playwright/Cypress); validación manual + build |
+| API URL configurable en build de producción | Sprint 18 PR1 | Proxy Vite solo en desarrollo; sin `VITE_API_BASE_URL` para despliegue |
+| Internacionalización (i18n) | Sprint 18 PR4 | Textos hardcodeados en español en componentes |
+
 ### Sprint 17 — Authentication (futuro)
 
 | Ítem | Origen | Justificación |
@@ -348,6 +365,7 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 | JWT Authentication | Sprint 17 PR2 | `JWTAuthenticationContext` valida Bearer JWT; config en `ApplicationConfig` |
 | JWT HTTP Guard | Sprint 17 PR3 | `JwtAuthenticationGuard` en `GET /api/v1/authentication/me` |
 | Swagger Bearer Authentication | Sprint 17 PR4 | Esquema Bearer en OpenAPI; `/me` documentado como protegido |
+| Frontend Foundation (RC) | Sprint 18 PR1–PR5 | Cliente React demostrable; consume API sin modificar contratos |
 
 ---
 
@@ -355,7 +373,7 @@ Aceptada. No bloquea sprints. Revisar cuando una Field Story o ADR lo exijan.
 
 No son deuda: decisiones de producto documentadas en `05_current_status.md`.
 
-- Login / passwords / emisión de JWT / refresh tokens / roles / permisos / políticas de autorización (validación JWT operativa en `GET /me`; sin flujo de credenciales ni autorización)
+- Login / passwords / emisión de JWT / refresh tokens / roles / permisos / políticas de autorización (validación JWT operativa en `GET /me`; frontend acepta JWT pegado)
 - Sincronización offline
 - Event Bus distribuido (RabbitMQ, Redis)
 - Almacenamiento en nube

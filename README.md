@@ -2,6 +2,8 @@
 
 Sistema operativo para la operación diaria de edificios. Modela trabajo operativo mediante eventos, no tickets.
 
+**Versión actual:** `0.18.0-alpha` (Release Candidate — demostrable de punta a punta).
+
 Este README permite levantar el proyecto desde cero sin conocimiento previo del código.
 
 ---
@@ -59,6 +61,25 @@ La API queda disponible en `http://localhost:3000`.
 >   }
 > }
 > ```
+
+### Frontend (demostración)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+El cliente web queda en `http://localhost:5173` con proxy a la API en `:3000`.
+
+| Pantalla | Ruta |
+|----------|------|
+| Home | `/` |
+| Login | `/login` (pegar JWT manualmente) |
+| Dashboard | `/dashboard` |
+| Incident Details | `/incidents/:incidentId` |
+
+Ver `frontend/README.md` y `docs/architecture_reviews/sprint_18_frontend_foundation.md`.
 
 ---
 
@@ -120,7 +141,7 @@ Levanta PostgreSQL, espera a que esté listo y aplica migraciones.
 npm test
 ```
 
-Los tests de integración usan mocks de PostgreSQL y no requieren base de datos en ejecución. Estado actual: **66/66 OK**.
+Los tests de integración usan mocks de PostgreSQL y no requieren base de datos en ejecución. Estado actual: **621/621 OK** (63 suites).
 
 | Suite | Qué verifica |
 |-------|--------------|
@@ -188,12 +209,15 @@ curl -X POST http://localhost:3000/api/v1/operations/events/<eventId>/evidence \
 ## Estructura del proyecto
 
 ```
-src/
+src/                  # Backend NestJS (monolito modular)
   operations/
-    domain/           # TypeScript puro, sin NestJS
-    application/      # Casos de uso y puertos
-    infrastructure/   # HTTP, PostgreSQL, FileStorage, migraciones
-test/                 # Tests de integración
+  authentication/
+  health/
+  info/
+  shared/
+  config/
+frontend/             # Cliente web React (Release Candidate)
+test/                 # Tests de integración backend
 docs/                 # Documentación del proyecto
 ```
 
@@ -205,7 +229,7 @@ docs/                 # Documentación del proyecto
 |-----------|-----------|
 | [docs/00_project_brief.md](docs/00_project_brief.md) | Qué es EdificiOS |
 | [docs/01_architecture.md](docs/01_architecture.md) | Capas y persistencia |
-| [docs/03_glossary.md](docs/03_glossary.md) | Lenguaje ubicuo |
+| [docs/glossary.md](docs/glossary.md) | Lenguaje ubicuo (dominio + frontend) |
 | [docs/05_current_status.md](docs/05_current_status.md) | Estado actual y backlog |
 | [docs/06_rules.md](docs/06_rules.md) | Reglas de ingeniería |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | Historial de cambios |

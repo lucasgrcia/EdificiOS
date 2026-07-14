@@ -808,6 +808,149 @@ GET /api/v1/authentication/me              (protegido — Bearer JWT)
                     └── GetAuthenticatedUserUseCase → users
 ```
 
+Frontend (Sprint 18 — Release Candidate):
+
+```
+Browser :5173 (Vite)
+  └── proxy /api → Backend :3000
+        ├── Home → GET /api/v1/info
+        ├── Login → JWT en localStorage (manual)
+        ├── Dashboard → GET /api/v1/operations/dashboard
+        └── Incident Details → GET incidents/:id + timeline
+```
+
+---
+
+## Frontend — capa de presentación
+
+Términos del cliente web en `frontend/`. **No son conceptos de dominio**; viven solo en la capa de presentación. El backend no los conoce.
+
+### Frontend
+
+Cliente web React que consume la API REST de EdificiOS. Capa de presentación pura: sin lógica de negocio, sin endpoints propios, sin modificar contratos HTTP.
+
+**Stack MVP:** Vite, React 19, TypeScript, React Router, TanStack Query, Tailwind CSS v4, Axios.
+
+**Versión RC:** `0.18.0-alpha`.
+
+---
+
+### ProtectedRoute
+
+Componente de ruta que exige autenticación en el cliente (JWT presente en `localStorage`).
+
+**Comportamiento:** si `isAuthenticated === false` → redirige a `/login` preservando la ruta de destino en `location.state`.
+
+**Aplicado en Sprint 18:** `/dashboard` únicamente. Operations permanece público en backend.
+
+**No confundir con:** `JwtAuthenticationGuard` (backend HTTP).
+
+---
+
+### AuthContext
+
+Contexto React que gestiona el token JWT en el cliente.
+
+**API:** `token`, `isAuthenticated`, `setToken()`, `logout()`.
+
+**Persistencia:** `localStorage` vía `authToken.ts`.
+
+**No hace:** validar JWT criptográficamente (eso es `JWTAuthenticationContext` en backend al llamar `/me`).
+
+---
+
+### Activity Feed (UI)
+
+Representación visual de la lista `activityFeed` del Dashboard en el frontend.
+
+**Componentes:** `ActivityFeedList`, `ActivityFeedItem`.
+
+**Navegación:** clic en entrada `INCIDENT` correlacionada → `/incidents/:incidentId` vía `resolveIncidentIdForFeedEntry.ts`.
+
+**No confundir con:** `ActivityFeedEntry` del backend (DTO en `DashboardView`). La UI no redefine el contrato; solo lo renderiza.
+
+---
+
+### Skeleton
+
+Placeholder animado que simula la estructura del contenido mientras carga una query.
+
+**Variantes reutilizables (Sprint 18 PR4):**
+
+| Componente | Uso |
+|------------|-----|
+| `Skeleton` | Bloque base |
+| `SkeletonCard` | Cards con líneas de texto |
+| `SkeletonList` | Listas de ítems |
+| `SkeletonTimeline` | Timeline vertical |
+| `DashboardMetricsSkeleton` | Grid de métricas del dashboard |
+
+**No confundir con:** spinner genérico (`Loader` eliminado en PR4).
+
+---
+
+### EmptyState
+
+Componente reutilizable para secciones sin datos.
+
+**Props:** `icon` (`EmptyStateIconName`), `title`, `description`.
+
+**Usado en:** Activity Feed, Notifications, Timeline.
+
+---
+
+### ErrorCard
+
+Componente reutilizable para errores de carga o API.
+
+**Props:** `title`, `description`, `onRetry?`.
+
+**Regla:** nunca muestra JSON crudo ni stack traces. Los mensajes provienen de `parseApiError`.
+
+---
+
+### Problem Details UI
+
+Capa de presentación que traduce respuestas RFC 9457 del backend a mensajes legibles para el usuario.
+
+**Módulo:** `frontend/src/utils/parseApiError.ts`, `frontend/src/types/problemDetails.ts`.
+
+**Comportamiento:**
+
+- Si `application/problem+json` → `title` + `detail` del Problem Details
+- Si error de red → mensaje de conectividad
+- Fallback → mensaje genérico
+
+**No confundir con:** `ProblemDetailsFilter` (backend). La UI solo consume el contrato ya existente.
+
+---
+
+### Toast
+
+Notificación efímera en pantalla para feedback de operaciones del usuario.
+
+**Infraestructura:** `toastStore` (estado global) + `ToastContainer` (render).
+
+**Tipos:** `success`, `error`, `info`.
+
+**Casos MVP:** login exitoso, logout, errores de red (interceptor Axios), reintentos.
+
+---
+
+### TanStack Query
+
+Librería de fetching y cache para React. Gestiona `isLoading`, `isError`, `refetch` en hooks (`useDashboard`, `useIncident`, etc.).
+
+**No reemplaza:** lógica de negocio; solo orquesta llamadas HTTP y estados de UI.
+
+---
+
+### AppLayout
+
+Layout principal con `Sidebar` + `Header` + área de contenido. Responsive: sidebar colapsable en móvil.
+
+**Usado en:** Home, Dashboard, Incident Details.
+
 ---
 
 ## Términos prohibidos en código y dominio

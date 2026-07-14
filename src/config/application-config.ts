@@ -1,7 +1,7 @@
 export class ApplicationConfig {
   readonly name = 'EdificiOS API';
 
-  readonly version = '0.15.0-alpha';
+  readonly version = '0.18.0-alpha';
 
   readonly environment = 'development';
 

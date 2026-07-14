@@ -2,7 +2,7 @@
 
 Última actualización: 2026-07-13
 
-Sprint 17 — cerrado.
+Sprint 18 — cerrado. **Release Candidate `0.18.0-alpha`.**
 
 ---
 
@@ -13,8 +13,10 @@ Sprint 17 — cerrado.
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Tests | 621/621 OK |
-| Build | OK |
+| Release Candidate | `0.18.0-alpha` — demostrable E2E |
+| Backend tests | 621/621 OK |
+| Backend build | OK |
+| Frontend build | OK |
 
 ---
 
@@ -297,6 +299,16 @@ Timeline (GetIncidentTimelineUseCase)
 | PR3 | `JwtAuthenticationGuard` en `GET /api/v1/authentication/me` | ✔ |
 | PR4 | Swagger Bearer Authentication (OpenAPI) | ✔ |
 | PR5 | Documentación + Architecture Review | ✔ |
+
+### Sprint 18 — Frontend Foundation (Release Candidate)
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | Foundation: Vite + React + Router + Query + Tailwind + Axios + JWT cliente + layouts + rutas | ✔ |
+| PR2 | Dashboard UI: `GET /operations/dashboard`, summary, activity feed, notifications | ✔ |
+| PR3 | Incident Details UI: incident + timeline, navegación desde activity feed | ✔ |
+| PR4 | UX Polish: skeletons, empty/error states, toasts, responsive, accesibilidad | ✔ |
+| PR5 | Release Candidate: documentación, versión `0.18.0-alpha`, cierre sprint | ✔ |
 
 ---
 
@@ -599,6 +611,61 @@ El guard **no valida JWT** directamente — delega en `AuthenticationContext`. O
 
 ---
 
+## Frontend (Release Candidate)
+
+Cliente web en `frontend/` — capa de presentación pura. **No modifica backend ni contratos HTTP.**
+
+| Indicador | Estado |
+|-----------|--------|
+| Stack | Vite + React 19 + TypeScript + React Router + TanStack Query + Tailwind v4 + Axios |
+| Versión | `0.18.0-alpha` |
+| Build | OK (`npm run build` en `frontend/`) |
+| Proxy dev | `:5173` → `/api` → `localhost:3000` |
+
+### Pantallas
+
+| Pantalla | Ruta | APIs |
+|----------|------|------|
+| Home | `/` | `GET /api/v1/info` |
+| Login | `/login` | JWT manual (sin endpoint de credenciales) |
+| Dashboard | `/dashboard` | `GET /api/v1/operations/dashboard` |
+| Incident Details | `/incidents/:incidentId` | `GET incidents/:id`, `GET .../timeline` |
+
+### Arquitectura del cliente
+
+```
+Pages → Hooks (TanStack Query) → API (Axios) → Backend :3000
+              ↓
+        Components (UI compartida)
+              ↓
+        Auth (JWT localStorage) + Toast + parseApiError (RFC 9457)
+```
+
+**Rutas protegidas:** `ProtectedRoute` en `/dashboard` únicamente. Incident details es pública (Operations sin guard).
+
+**Componentes transversales (PR4):** `SkeletonCard`, `SkeletonList`, `SkeletonTimeline`, `EmptyState`, `ErrorCard`, `ToastContainer`, `SectionTitle`.
+
+**Limitaciones conocidas en UI:**
+
+- Login = pegar JWT manualmente (sin flujo de credenciales).
+- `priority` y `site` muestran `—` (`IncidentView` no los expone).
+- Correlación Activity Feed → Incident vía heurística en `resolveIncidentIdForFeedEntry.ts`.
+- Dashboard sin selector de `actorId` (notifications vacías por defecto).
+
+**Demostración E2E:**
+
+```bash
+# Terminal 1 — backend
+npm run db:setup && npm run start:dev    # :3000
+
+# Terminal 2 — frontend
+cd frontend && npm install && npm run dev   # :5173
+```
+
+Estado: **operativo** (Sprint 18 PR1–PR5). Ver `docs/architecture_reviews/sprint_18_frontend_foundation.md`.
+
+---
+
 ## Persistencia
 
 PostgreSQL directo (`pg`). Sin ORM. Sin Foreign Keys entre agregados.
@@ -660,6 +727,7 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - Observability: Correlation ID + Application Logger + Application Metrics en `SharedModule` (Sprint 14); propagación a Event Log y Outbox.
 - API Platform: Problem Details (RFC 9457) + HTTP Validation global + Swagger/OpenAPI + `ApplicationConfig` (Sprint 15).
 - Authentication: query/command CQRS + JWT (`JWTAuthenticationContext`) + guard HTTP + Swagger Bearer; `GET /me` protegido (Sprint 16–17).
+- **Frontend:** cliente React demostrable; consume API existente sin lógica de negocio (Sprint 18).
 - Query repositories: `IncidentQuery`, `EvidenceQuery`, `EventQuery`, `WorkOrderQuery`, `NotificationQuery`, `IncidentTimeline`.
 - Evidence respalda Domain Events, no Incident (ADR-006).
 - Site es agregado explícito; Asset referencia Site por identidad (ADR-007).
@@ -670,13 +738,13 @@ Documentación de decisiones: `docs/architecture_decisions/`.
 
 Glosario ubicuo: `docs/glossary.md`. Deuda arquitectónica: `docs/architecture_backlog.md`.
 
-Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`, `docs/architecture_reviews/sprint_13_operational_endpoints.md`, `docs/architecture_reviews/sprint_14_observability.md`, `docs/architecture_reviews/sprint_15_api_platform.md`, `docs/architecture_reviews/sprint_16_authentication_foundation.md`, `docs/architecture_reviews/sprint_17_authentication.md`.
+Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`, `docs/architecture_reviews/sprint_13_operational_endpoints.md`, `docs/architecture_reviews/sprint_14_observability.md`, `docs/architecture_reviews/sprint_15_api_platform.md`, `docs/architecture_reviews/sprint_16_authentication_foundation.md`, `docs/architecture_reviews/sprint_17_authentication.md`, `docs/architecture_reviews/sprint_18_frontend_foundation.md`.
 
 ---
 
 ## Deliberadamente ausente
 
-- Login / passwords / emisión de JWT / refresh tokens / autorización por roles (validación JWT operativa en `GET /me`; sin flujo de login ni permisos)
+- Login / passwords / emisión de JWT / refresh tokens / autorización por roles (validación JWT operativa en `GET /me`; frontend acepta JWT pegado manualmente)
 - Sincronización offline
 - Concurrencia optimista
 - Event Bus distribuido (RabbitMQ, Redis)
@@ -716,5 +784,7 @@ Deuda futura Sprint 14 (Observability): integración Prometheus, exportador Open
 Deuda futura Sprint 15 (API Platform): autorización, rate limiting, versionado múltiple (v2), generación automática de SDKs OpenAPI, configuración desde variables de entorno.
 
 Deuda futura Sprint 17 (Authentication): refresh tokens, password hashing, login credentials, roles, permissions, authorization policies.
+
+Deuda futura Sprint 18 (Frontend): login real, refresh token, paginación, filtros avanzados, campos UI pendientes, tests E2E frontend, API URL en producción.
 
 Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`.
