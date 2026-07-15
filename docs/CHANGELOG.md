@@ -6,65 +6,80 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
-## [0.18.0-alpha] - 2026-07-13
+## [0.18.0-alpha] - 2026-07-14
 
 **Release Candidate.** Primera versión demostrable de punta a punta: backend operativo + cliente web funcional. Sin nuevas capacidades de dominio ni endpoints.
 
 ### Added
 
-#### Sprint 18 — Frontend Foundation (PR1)
+#### Sprint 18 — Frontend Base (PR1)
 
-- Carpeta `frontend/` con Vite + React 19 + TypeScript + React Router + TanStack Query + Tailwind CSS v4 + Axios.
+- Carpeta `frontend/` con **React 19**, **Vite**, TypeScript, **React Router**, **TanStack Query**, **Tailwind CSS v4** y Axios.
 - Estructura: `src/app/`, `pages/`, `layouts/`, `components/`, `api/`, `hooks/`, `auth/`, `types/`, `routes/`, `toast/`, `utils/`.
 - Clientes HTTP: `publicApiClient` y `authenticatedApiClient` (`/api/v1`); proxy de desarrollo Vite → `localhost:3000`.
-- JWT en cliente: `authToken.ts`, `AuthContext`, interceptor Bearer en requests autenticados.
-- Rutas: `/` (Home), `/login`, `/dashboard` (protegida), `/incidents/:incidentId`.
-- `ProtectedRoute` — redirige a `/login` si no hay token; preserva ruta de destino.
-- Layouts: `AppLayout` (Sidebar + Header responsive), `AuthLayout`.
+- **Application Shell:** `AppProviders` (Query + Auth + Toast), `AppLayout`, `AuthLayout`.
 - Componentes base: `Button`, `Card`, `Section`, `PageTitle`, `Container`.
+- Rutas: `/` (Home), `/login`, `/dashboard`, `/incidents/:incidentId`.
+
+#### Sprint 18 — Authentication UI + JWT Integration (PR1)
+
+- `LoginPage` — captura de JWT manual (sin endpoint de credenciales; deuda documentada).
+- `AuthContext` + `authToken.ts` — persistencia en `localStorage`.
+- `ProtectedRoute` — redirige a `/login` si no hay token; preserva ruta de destino.
+- Interceptor Axios `Authorization: Bearer` en `authenticatedApiClient`.
+- Integración preparada con `GET /api/v1/authentication/me` (backend Sprint 17).
 
 #### Sprint 18 — Dashboard UI (PR2)
 
 - `GET /api/v1/operations/dashboard` consumido vía `useDashboard()` (TanStack Query).
-- `DashboardPage`: `Dashboard Summary`, `Activity Feed`, `Notifications`.
+- `DashboardPage`: **Dashboard Summary**, **Activity Feed**, **Notifications**.
 - Componentes: `DashboardMetricCard`, `ActivityFeedList/Item`, `NotificationList/Item`.
 
-#### Sprint 18 — Incident Details UI (PR3)
+#### Sprint 18 — Incident Details / Incident Viewer (PR3)
 
 - `GET /api/v1/operations/incidents/:id` y `GET /api/v1/operations/incidents/:incidentId/timeline`.
 - `IncidentDetailsPage` con `IncidentHeader`, `IncidentSummaryCard`, `Timeline`, `TimelineItem`, `TimelineIcon`, `TimelineDate`.
 - Hooks: `useIncident()`, `useIncidentTimeline()`.
-- Navegación desde Activity Feed vía `resolveIncidentIdForFeedEntry.ts` (correlación con `recentIncidents`).
+- Navegación desde Activity Feed vía `resolveIncidentIdForFeedEntry.ts`.
 
-#### Sprint 18 — UX Polish (PR4)
+#### Sprint 18 — UX Improvements (PR4)
 
-- Skeletons reutilizables: `Skeleton`, `SkeletonCard`, `SkeletonList`, `SkeletonTimeline`, `DashboardMetricsSkeleton`.
-- `EmptyState` + `EmptyStateIcon` — icono, título y descripción por sección.
-- `ErrorCard` — título, descripción amigable y botón Reintentar; sin JSON crudo.
-- `parseApiError` — RFC 9457 Problem Details → mensajes legibles.
-- Sistema de Toasts: `toastStore` + `ToastContainer` (éxito, error, info); login, logout, errores de red, reintentos.
-- Responsive: Sidebar colapsable, Dashboard en grid, Timeline y Cards adaptados a móvil.
-- Accesibilidad básica: `focus-visible`, `aria-label`, contraste en botones y navegación.
-- Consistencia visual: `SectionTitle`, espaciados, tipografía y paleta unificados en todas las pantallas.
+- **Skeletons:** `Skeleton`, `SkeletonCard`, `SkeletonList`, `SkeletonTimeline`, `DashboardMetricsSkeleton`.
+- **Error Handling:** `ErrorCard` + `parseApiError` (RFC 9457 → título y descripción; sin JSON crudo).
+- **Toasts:** `toastStore` + `ToastContainer` (login, logout, errores de red, reintentos).
+- **Empty states:** `EmptyState` + `EmptyStateIcon` (icono, título, descripción).
+- **Responsive Layout:** Sidebar colapsable, Dashboard en grid, Timeline y Cards adaptados a móvil.
+- Accesibilidad básica: `focus-visible`, `aria-label`, contraste.
+- Consistencia visual: `SectionTitle`, espaciados y tipografía unificados.
 
 #### Sprint 18 — Release Candidate (PR5)
 
-- Versión del proyecto: `0.18.0-alpha` (`package.json`, `frontend/package.json`, `ApplicationConfig`).
-- Sprint 18 marcado como COMPLETADO en `docs/05_current_status.md`.
-- Glosario: conceptos de presentación (Frontend, ProtectedRoute, Skeleton, ErrorCard, Toast, Problem Details UI, etc.).
+- Versión del proyecto: `0.18.0-alpha` (`package.json`, `frontend/package.json`, `ApplicationConfig`, `GET /api/v1/info`, Swagger).
+- Sprint 18 marcado como **COMPLETADO** en `docs/05_current_status.md`.
+- `docs/GUIA_USO.md` — guía de uso local (DB, API, frontend).
+- Glosario ampliado: Protected Route, Skeleton Loader, Toast, Frontend Layout, React Query, Application Shell.
 - `docs/architecture_reviews/sprint_18_frontend_foundation.md` (Architecture Review).
-- `docs/architecture_backlog.md`: deuda real del frontend (login, refresh, paginación, filtros, tests UI).
+- `docs/architecture_backlog.md`: deuda real del frontend consolidada.
 
 ### Changed
 
-- `ApplicationConfig.version` alineada a `0.18.0-alpha` (antes desactualizada respecto a documentación).
-- `tsconfig.build.json` excluye `frontend/` para que `nest build` no compile el cliente React.
-- Pantallas Home, Login, Dashboard e Incident Details usan skeletons, empty states y `ErrorCard` en lugar de loaders simples.
+- `ApplicationConfig.version` alineada a `0.18.0-alpha` (coherente con Info y Swagger).
+- Pantallas Home, Login, Dashboard e Incident Details usan skeletons, empty states y `ErrorCard`.
 - Interceptor Axios muestra toast automático en errores de red.
 
 ### Removed
 
-- `Loader.tsx`, `dashboard/EmptyState.tsx`, `dashboard/ErrorState.tsx` — reemplazados por componentes compartidos en PR4.
+- `Loader.tsx`, `dashboard/EmptyState.tsx`, `dashboard/ErrorState.tsx` — reemplazados por componentes compartidos (PR4).
+
+### Notas de versión
+
+| Fuente | Versión `0.18.0-alpha` |
+|--------|------------------------|
+| `ApplicationConfig` | ✔ |
+| `GET /api/v1/info` | ✔ |
+| Swagger (`/api/docs`) | ✔ |
+| `package.json` (raíz y `frontend/`) | ✔ |
+| `GET /api/v1/health` | `0.13.0-alpha` (constante interna; deuda en backlog) |
 
 ---
 

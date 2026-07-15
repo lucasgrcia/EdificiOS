@@ -77,3 +77,4 @@ src/
 - Estado del proyecto: [docs/05_current_status.md](../docs/05_current_status.md)
 - Architecture Review: [docs/architecture_reviews/sprint_18_frontend_foundation.md](../docs/architecture_reviews/sprint_18_frontend_foundation.md)
 - Glosario frontend: [docs/glossary.md](../docs/glossary.md) (sección *Frontend — capa de presentación*)
+- Guía de uso: [docs/GUIA_USO.md](../docs/GUIA_USO.md)

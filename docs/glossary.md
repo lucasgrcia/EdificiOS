@@ -835,9 +835,11 @@ Cliente web React que consume la API REST de EdificiOS. Capa de presentación pu
 
 ---
 
-### ProtectedRoute
+### ProtectedRoute (Protected Route)
 
 Componente de ruta que exige autenticación en el cliente (JWT presente en `localStorage`).
+
+**También conocido como:** Protected Route.
 
 **Comportamiento:** si `isAuthenticated === false` → redirige a `/login` preservando la ruta de destino en `location.state`.
 
@@ -871,9 +873,11 @@ Representación visual de la lista `activityFeed` del Dashboard en el frontend.
 
 ---
 
-### Skeleton
+### Skeleton (Skeleton Loader)
 
-Placeholder animado que simula la estructura del contenido mientras carga una query.
+Placeholder animado que simula la estructura del contenido mientras carga una query de TanStack Query.
+
+**También conocido como:** Skeleton Loader.
 
 **Variantes reutilizables (Sprint 18 PR4):**
 
@@ -929,19 +933,59 @@ Capa de presentación que traduce respuestas RFC 9457 del backend a mensajes leg
 
 Notificación efímera en pantalla para feedback de operaciones del usuario.
 
-**Infraestructura:** `toastStore` (estado global) + `ToastContainer` (render).
+**Infraestructura:** `toastStore` (estado global) + `ToastContainer` (render en `AppProviders`).
 
 **Tipos:** `success`, `error`, `info`.
 
-**Casos MVP:** login exitoso, logout, errores de red (interceptor Axios), reintentos.
+**Casos MVP:** login exitoso, logout, errores de red (interceptor Axios), reintentos desde `ErrorCard`.
+
+**No confundir con:** Notification (dominio Operations). Toast es feedback transitorio de UI, no se persiste.
 
 ---
 
-### TanStack Query
+### TanStack Query (React Query)
 
-Librería de fetching y cache para React. Gestiona `isLoading`, `isError`, `refetch` en hooks (`useDashboard`, `useIncident`, etc.).
+Librería de fetching, cache y sincronización de datos del servidor para React.
 
-**No reemplaza:** lógica de negocio; solo orquesta llamadas HTTP y estados de UI.
+**También conocido como:** React Query (nombre histórico del proyecto).
+
+**En EdificiOS:** gestiona `isLoading`, `isError`, `refetch` en `useDashboard`, `useIncident`, `useIncidentTimeline` y la query de `HomePage`.
+
+**No reemplaza:** lógica de negocio ni casos de uso del backend; solo orquesta llamadas HTTP y estados de UI.
+
+---
+
+### Application Shell
+
+Envoltorio estructural de la aplicación web: proveedores globales, layout y enrutamiento.
+
+**Componentes:**
+
+| Pieza | Rol |
+|-------|-----|
+| `AppProviders` | `QueryClientProvider` + `AuthProvider` + `ToastContainer` |
+| `App.tsx` | `BrowserRouter` + `AppRoutes` |
+| `AppLayout` | Sidebar + Header + área de contenido |
+| `AuthLayout` | Layout centrado para Login |
+
+**Usado en:** todas las pantallas del Release Candidate.
+
+---
+
+### Frontend Layout
+
+Patrón de composición visual que define la estructura de cada pantalla sin lógica de negocio.
+
+**Layouts MVP:**
+
+| Layout | Pantallas |
+|--------|-----------|
+| `AppLayout` | Home, Dashboard, Incident Viewer |
+| `AuthLayout` | Login |
+
+**Incluye:** `Sidebar` (navegación), `Header` (título + logout), `Container`, `Section`, `Card`.
+
+**Responsive:** sidebar colapsable en móvil; grid adaptativo en Dashboard.
 
 ---
 
@@ -996,3 +1040,4 @@ Layout principal con `Sidebar` + `Header` + área de contenido. Responsive: side
 - Decisiones arquitectónicas: `docs/architecture_decisions/`
 - Deuda priorizada: `docs/architecture_backlog.md`
 - Estado del proyecto: `docs/05_current_status.md`
+- Guía de uso local: `docs/GUIA_USO.md`

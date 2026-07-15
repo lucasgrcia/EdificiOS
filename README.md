@@ -229,6 +229,7 @@ docs/                 # Documentación del proyecto
 |-----------|-----------|
 | [docs/00_project_brief.md](docs/00_project_brief.md) | Qué es EdificiOS |
 | [docs/01_architecture.md](docs/01_architecture.md) | Capas y persistencia |
+| [docs/GUIA_USO.md](docs/GUIA_USO.md) | Guía de uso local (DB, API, frontend) |
 | [docs/glossary.md](docs/glossary.md) | Lenguaje ubicuo (dominio + frontend) |
 | [docs/05_current_status.md](docs/05_current_status.md) | Estado actual y backlog |
 | [docs/06_rules.md](docs/06_rules.md) | Reglas de ingeniería |

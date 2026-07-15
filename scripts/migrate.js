@@ -11,7 +11,7 @@ function loadEnvFile() {
 
   const content = readFileSync(envPath, 'utf8');
 
-  for (const line of content) {
+  for (const line of content.split(/\r?\n/)) {
     const trimmed = line.trim();
 
     if (trimmed.length === 0 || trimmed.startsWith('#')) {

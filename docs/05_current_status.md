@@ -1,8 +1,8 @@
 # Estado actual del proyecto
 
-Última actualización: 2026-07-13
+Última actualización: 2026-07-14
 
-Sprint 18 — cerrado. **Release Candidate `0.18.0-alpha`.**
+Sprint 18 — **COMPLETADO**. **Release Candidate `0.18.0-alpha`.**
 
 ---
 
@@ -14,9 +14,10 @@ Sprint 18 — cerrado. **Release Candidate `0.18.0-alpha`.**
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
 | Release Candidate | `0.18.0-alpha` — demostrable E2E |
-| Backend tests | 621/621 OK |
+| Backend tests | 63 suites — 621 tests — 0 fallos |
 | Backend build | OK |
-| Frontend build | OK |
+| Frontend | React + Vite — build OK — sin tests automatizados |
+| Guía de uso | `docs/GUIA_USO.md` |
 
 ---
 
@@ -308,7 +309,7 @@ Timeline (GetIncidentTimelineUseCase)
 | PR2 | Dashboard UI: `GET /operations/dashboard`, summary, activity feed, notifications | ✔ |
 | PR3 | Incident Details UI: incident + timeline, navegación desde activity feed | ✔ |
 | PR4 | UX Polish: skeletons, empty/error states, toasts, responsive, accesibilidad | ✔ |
-| PR5 | Release Candidate: documentación, versión `0.18.0-alpha`, cierre sprint | ✔ |
+| PR5 | Release Candidate: `0.18.0-alpha`, `GUIA_USO.md`, glosario, Architecture Review, backlog | ✔ |
 
 ---
 
@@ -611,58 +612,82 @@ El guard **no valida JWT** directamente — delega en `AuthenticationContext`. O
 
 ---
 
-## Frontend (Release Candidate)
+## Frontend Foundation
 
-Cliente web en `frontend/` — capa de presentación pura. **No modifica backend ni contratos HTTP.**
+Cliente web en `frontend/` — capa de presentación pura. **No modifica dominio, Application, Infrastructure ni contratos HTTP.**
 
 | Indicador | Estado |
 |-----------|--------|
-| Stack | Vite + React 19 + TypeScript + React Router + TanStack Query + Tailwind v4 + Axios |
 | Versión | `0.18.0-alpha` |
 | Build | OK (`npm run build` en `frontend/`) |
+| Tests | Sin suite automatizada (validación manual + build) |
 | Proxy dev | `:5173` → `/api` → `localhost:3000` |
 
-### Pantallas
+### Stack
+
+| Tecnología | Rol en EdificiOS |
+|------------|------------------|
+| **React 19** | UI declarativa |
+| **Vite** | Bundler y dev server |
+| **React Router** | Navegación (`/`, `/login`, `/dashboard`, `/incidents/:id`) |
+| **TanStack Query** | Fetch, cache y estados loading/error en hooks |
+| **Tailwind CSS v4** | Estilos y layout responsive |
+| **Axios** | Cliente HTTP (`publicApiClient`, `authenticatedApiClient`) |
+| **JWT (cliente)** | `AuthContext`, `ProtectedRoute`, Bearer en requests autenticados |
+
+### Capacidades de la UI
+
+| Capacidad | Pantalla / componente |
+|-----------|----------------------|
+| **Application Shell** | `AppProviders`, `AppLayout`, `AuthLayout`, Sidebar, Header |
+| **Authentication UI** | `LoginPage` (JWT manual) |
+| **Dashboard** | `DashboardPage` — summary, activity feed, notifications |
+| **Incident Viewer** | `IncidentDetailsPage` — resumen + timeline |
+
+### Pantallas y APIs
 
 | Pantalla | Ruta | APIs |
 |----------|------|------|
 | Home | `/` | `GET /api/v1/info` |
 | Login | `/login` | JWT manual (sin endpoint de credenciales) |
 | Dashboard | `/dashboard` | `GET /api/v1/operations/dashboard` |
-| Incident Details | `/incidents/:incidentId` | `GET incidents/:id`, `GET .../timeline` |
+| Incident Viewer | `/incidents/:incidentId` | `GET incidents/:id`, `GET .../timeline` |
 
 ### Arquitectura del cliente
 
 ```
+Application Shell (providers + layout + routes)
+        ↓
 Pages → Hooks (TanStack Query) → API (Axios) → Backend :3000
-              ↓
-        Components (UI compartida)
-              ↓
-        Auth (JWT localStorage) + Toast + parseApiError (RFC 9457)
+        ↓
+Components (Skeleton, EmptyState, ErrorCard, Toast)
+        ↓
+Auth (JWT localStorage) + parseApiError (RFC 9457)
 ```
 
-**Rutas protegidas:** `ProtectedRoute` en `/dashboard` únicamente. Incident details es pública (Operations sin guard).
+**Rutas protegidas:** `ProtectedRoute` en `/dashboard` únicamente.
 
-**Componentes transversales (PR4):** `SkeletonCard`, `SkeletonList`, `SkeletonTimeline`, `EmptyState`, `ErrorCard`, `ToastContainer`, `SectionTitle`.
+**Limitaciones conocidas:**
 
-**Limitaciones conocidas en UI:**
-
-- Login = pegar JWT manualmente (sin flujo de credenciales).
-- `priority` y `site` muestran `—` (`IncidentView` no los expone).
-- Correlación Activity Feed → Incident vía heurística en `resolveIncidentIdForFeedEntry.ts`.
+- Login = pegar JWT manualmente.
 - Dashboard sin selector de `actorId` (notifications vacías por defecto).
+- `priority` y `site` muestran `—` en Incident Viewer.
+- Solo lectura: sin CRUD de Incident ni Assets desde la UI.
 
-**Demostración E2E:**
+**Coherencia de versión `0.18.0-alpha`:**
 
-```bash
-# Terminal 1 — backend
-npm run db:setup && npm run start:dev    # :3000
+| Fuente | Versión |
+|--------|---------|
+| `ApplicationConfig` | `0.18.0-alpha` |
+| `GET /api/v1/info` | `0.18.0-alpha` |
+| Swagger | `0.18.0-alpha` |
+| `GET /api/v1/health` | `0.13.0-alpha` (deuda; ver backlog) |
 
-# Terminal 2 — frontend
-cd frontend && npm install && npm run dev   # :5173
-```
+**Demostración E2E:** ver `docs/GUIA_USO.md`.
 
-Estado: **operativo** (Sprint 18 PR1–PR5). Ver `docs/architecture_reviews/sprint_18_frontend_foundation.md`.
+Architecture Review: `docs/architecture_reviews/sprint_18_frontend_foundation.md`.
+
+Estado: **operativo** (Sprint 18 PR1–PR5).
 
 ---
 
@@ -785,6 +810,6 @@ Deuda futura Sprint 15 (API Platform): autorización, rate limiting, versionado 
 
 Deuda futura Sprint 17 (Authentication): refresh tokens, password hashing, login credentials, roles, permissions, authorization policies.
 
-Deuda futura Sprint 18 (Frontend): login real, refresh token, paginación, filtros avanzados, campos UI pendientes, tests E2E frontend, API URL en producción.
+Deuda futura Sprint 18 (Frontend): login real, refresh token, actor selector, CRUD Incident/Assets desde UI, filtros, paginación, tests E2E, API URL en producción.
 
 Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`.
