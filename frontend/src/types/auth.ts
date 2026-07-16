@@ -4,6 +4,7 @@ export type AuthenticatedUser = {
   displayName: string;
   status: string;
   createdAt: string;
+  actorId?: string;
 };
 
 export type LoginRequest = {

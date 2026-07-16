@@ -1,26 +1,14 @@
-import { Button } from '../Button';
-import { useToast } from '../../toast/ToastContainer';
+import type { AuthenticatedUser } from '../../types/auth';
 
 type HeaderProps = {
   onMenuClick: () => void;
-  onLogout?: () => void;
-  showLogout?: boolean;
+  user: AuthenticatedUser | null;
+  isAuthenticated: boolean;
 };
 
-export function Header({
-  onMenuClick,
-  onLogout,
-  showLogout = false,
-}: HeaderProps) {
-  const toast = useToast();
-
-  function handleLogout() {
-    onLogout?.();
-    toast.info('Sesión cerrada', 'Tu token fue eliminado de este dispositivo.');
-  }
-
+export function Header({ onMenuClick, user, isAuthenticated }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:h-16 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:h-16 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
         <button
           aria-label="Abrir menú de navegación"
@@ -37,14 +25,26 @@ export function Header({
         </span>
       </div>
 
-      {showLogout && onLogout !== undefined && (
-        <Button
-          aria-label="Cerrar sesión"
-          onClick={handleLogout}
-          variant="ghost"
-        >
-          Cerrar sesión
-        </Button>
+      {isAuthenticated && user !== null && (
+        <div className="flex min-w-0 items-center gap-3 text-right">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-slate-900">
+              {user.displayName}
+            </p>
+            <p className="truncate text-xs text-slate-500">{user.email}</p>
+          </div>
+          <div
+            aria-label="Sesión activa"
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800"
+            role="status"
+          >
+            <span
+              aria-hidden
+              className="h-2 w-2 rounded-full bg-emerald-500"
+            />
+            Activa
+          </div>
+        </div>
       )}
     </header>
   );

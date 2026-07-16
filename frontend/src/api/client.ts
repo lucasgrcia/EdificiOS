@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance } from 'axios';
 
 import { getAuthToken } from '../auth/authToken';
+import { notifyUnauthorized } from '../auth/unauthorizedHandler';
 import { toast } from '../toast/toastStore';
 import { parseApiError } from '../utils/parseApiError';
 
@@ -11,11 +12,18 @@ function registerNetworkErrorToast(error: unknown): void {
   }
 }
 
-function attachNetworkErrorInterceptor(client: AxiosInstance): void {
+function attachResponseInterceptor(client: AxiosInstance, handle401: boolean) {
   client.interceptors.response.use(
     (response) => response,
     (error) => {
-      registerNetworkErrorToast(error);
+      if (axios.isAxiosError(error)) {
+        if (handle401 && error.response?.status === 401) {
+          notifyUnauthorized();
+        } else if (error.response === undefined) {
+          registerNetworkErrorToast(error);
+        }
+      }
+
       return Promise.reject(error);
     },
   );
@@ -47,5 +55,5 @@ authenticatedApiClient.interceptors.request.use((config) => {
   return config;
 });
 
-attachNetworkErrorInterceptor(publicApiClient);
-attachNetworkErrorInterceptor(authenticatedApiClient);
+attachResponseInterceptor(publicApiClient, false);
+attachResponseInterceptor(authenticatedApiClient, true);

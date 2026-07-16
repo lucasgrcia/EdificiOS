@@ -1,6 +1,9 @@
+import { Link } from 'react-router-dom';
+
 import { ActivityFeedList } from '../components/dashboard/ActivityFeedList';
 import { DashboardMetricCard } from '../components/dashboard/DashboardMetricCard';
 import { NotificationList } from '../components/dashboard/NotificationList';
+import { RecentIncidentsList } from '../components/dashboard/RecentIncidentsList';
 import { Card } from '../components/Card';
 import { Container } from '../components/Container';
 import { ErrorCard } from '../components/ErrorCard';
@@ -12,7 +15,9 @@ import {
   SkeletonList,
 } from '../components/skeleton/Skeletons';
 import { useDashboard } from '../hooks/useDashboard';
+import { useAuth } from '../hooks/useAuth';
 import { AppLayout } from '../layouts/AppLayout';
+import { ROUTES } from '../routes/paths';
 import { useToast } from '../toast/ToastContainer';
 import { parseApiError } from '../utils/parseApiError';
 import type { DashboardSummary } from '../types/dashboard';
@@ -34,7 +39,10 @@ const SUMMARY_METRICS: Array<{
 
 export function DashboardPage() {
   const toast = useToast();
-  const { data, isLoading, isError, error, refetch } = useDashboard();
+  const { user } = useAuth();
+  const { data, isLoading, isError, error, refetch } = useDashboard({
+    actorId: user?.actorId,
+  });
 
   function handleRetry() {
     void refetch();
@@ -99,6 +107,21 @@ export function DashboardPage() {
 
               <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
                 <Card>
+                  <div className="flex items-center justify-between gap-3">
+                    <SectionTitle>Incidencias recientes</SectionTitle>
+                    <Link
+                      className="text-xs font-medium text-slate-700 hover:text-slate-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+                      to={ROUTES.incidents}
+                    >
+                      Ver todas
+                    </Link>
+                  </div>
+                  <div className="mt-4">
+                    <RecentIncidentsList incidents={data.recentIncidents} />
+                  </div>
+                </Card>
+
+                <Card>
                   <SectionTitle>Activity Feed</SectionTitle>
                   <div className="mt-4">
                     <ActivityFeedList
@@ -108,7 +131,7 @@ export function DashboardPage() {
                   </div>
                 </Card>
 
-                <Card>
+                <Card className="lg:col-span-2">
                   <SectionTitle>Notifications</SectionTitle>
                   <div className="mt-4">
                     <NotificationList notifications={data.notifications} />

@@ -1,10 +1,9 @@
 import { useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../hooks/useAuth';
+import { Breadcrumbs } from '../components/layout/Breadcrumbs';
 import { Header } from '../components/layout/Header';
 import { Sidebar } from '../components/layout/Sidebar';
-import { ROUTES } from '../routes/paths';
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -12,33 +11,34 @@ type AppLayoutProps = {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const navigate = useNavigate();
-  const { logout, isAuthenticated } = useAuth();
-
-  function handleLogout() {
-    logout();
-    navigate(ROUTES.login, { replace: true });
-  }
+  const { logout, isAuthenticated, user } = useAuth();
 
   return (
     <div className="min-h-screen bg-slate-50 lg:flex">
       <Sidebar
+        isAuthenticated={isAuthenticated}
         isOpen={sidebarOpen}
         onClose={() => {
           setSidebarOpen(false);
+        }}
+        onLogout={() => {
+          logout();
         }}
       />
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <Header
-          onLogout={handleLogout}
+          isAuthenticated={isAuthenticated}
           onMenuClick={() => {
             setSidebarOpen(true);
           }}
-          showLogout={isAuthenticated}
+          user={user}
         />
 
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 p-4 sm:p-6">
+          <Breadcrumbs />
+          {children}
+        </main>
       </div>
     </div>
   );

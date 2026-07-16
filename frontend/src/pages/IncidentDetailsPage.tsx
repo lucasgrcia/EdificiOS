@@ -39,10 +39,10 @@ export function IncidentDetailsPage() {
       <Container>
         <Section className="space-y-6">
           <Link
-            className="inline-flex text-sm font-medium text-slate-600 transition hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+            className="inline-flex text-sm font-medium text-slate-700 transition hover:text-slate-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
             to={ROUTES.dashboard}
           >
-            ← Volver al dashboard
+            ← Volver al Dashboard
           </Link>
 
           {isLoading && (
@@ -89,16 +89,28 @@ export function IncidentDetailsPage() {
                     },
                   ]}
                 />
+                <a
+                  className="inline-flex text-sm font-medium text-slate-700 transition hover:text-slate-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+                  href="#timeline"
+                >
+                  Ver timeline ↓
+                </a>
               </Section>
             </>
           )}
 
           {timelineQuery.data !== undefined && !isLoading && (
-            <Card>
+            <Card id="timeline">
               <SectionTitle>Timeline</SectionTitle>
               <div className="mt-6">
                 <Timeline entries={timelineQuery.data} />
               </div>
+              <Link
+                className="mt-6 inline-flex text-sm font-medium text-slate-700 transition hover:text-slate-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+                to={ROUTES.dashboard}
+              >
+                Volver al Dashboard
+              </Link>
             </Card>
           )}
         </Section>

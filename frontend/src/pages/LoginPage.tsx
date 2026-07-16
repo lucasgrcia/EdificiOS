@@ -6,6 +6,7 @@ import { Card } from '../components/Card';
 import { ErrorCard } from '../components/ErrorCard';
 import { PageTitle } from '../components/PageTitle';
 import { Section } from '../components/Section';
+import { AuthBootstrapLoading } from '../components/AuthBootstrapLoading';
 import { useAuth } from '../hooks/useAuth';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { ROUTES } from '../routes/paths';
@@ -13,7 +14,7 @@ import { useToast } from '../toast/ToastContainer';
 import { parseApiError, type ParsedApiError } from '../utils/parseApiError';
 
 export function LoginPage() {
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated, isInitializing, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
@@ -25,12 +26,20 @@ export function LoginPage() {
     (location.state as { from?: { pathname: string } } | null)?.from
       ?.pathname ?? ROUTES.dashboard;
 
+  if (isInitializing) {
+    return <AuthBootstrapLoading />;
+  }
+
   if (isAuthenticated) {
     return <Navigate replace to={redirectPath} />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
 
     if (email.trim() === '') {
       toast.error(
@@ -99,7 +108,17 @@ export function LoginPage() {
               disabled={isSubmitting}
               type="submit"
             >
-              {isSubmitting ? 'Iniciando sesión…' : 'Iniciar sesión'}
+              {isSubmitting ? (
+                <>
+                  <span
+                    aria-hidden
+                    className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+                  />
+                  Iniciando sesión…
+                </>
+              ) : (
+                'Iniciar sesión'
+              )}
             </Button>
           </form>
         </Section>

@@ -6,6 +6,7 @@ export const authenticatedUserFixture = {
   displayName: 'Demo User',
   status: 'ACTIVE',
   createdAt: '2026-07-10T08:00:00.000Z',
+  actorId: '00000000-0000-0000-0000-000000000020',
 } as const;
 
 export function createUnauthorizedAxiosError(): AxiosError {

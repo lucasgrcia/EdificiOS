@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,27 +14,42 @@ import {
   authenticatedUserFixture,
   createUnauthorizedAxiosError,
 } from '../test/fixtures/auth';
+import * as toastStore from '../toast/toastStore';
 
 vi.mock('../api/auth.api', () => ({
   login: vi.fn(),
   fetchCurrentUser: vi.fn(),
 }));
 
+vi.mock('../toast/toastStore', () => ({
+  toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+    info: vi.fn(),
+  },
+}));
+
 function renderLoginFlow(initialPath: string = ROUTES.login) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
   return render(
-    <AuthProvider>
+    <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[initialPath]}>
-        <Routes>
-          <Route element={<LoginPage />} path={ROUTES.login} />
-          <Route element={<ProtectedRoute />}>
-            <Route
-              element={<div>Dashboard content</div>}
-              path={ROUTES.dashboard}
-            />
-          </Route>
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route element={<LoginPage />} path={ROUTES.login} />
+            <Route element={<ProtectedRoute />}>
+              <Route
+                element={<div>Dashboard content</div>}
+                path={ROUTES.dashboard}
+              />
+            </Route>
+          </Routes>
+        </AuthProvider>
       </MemoryRouter>
-    </AuthProvider>,
+    </QueryClientProvider>,
   );
 }
 
@@ -84,6 +100,9 @@ describe('LoginPage', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Unauthorized');
     expect(screen.queryByText('Dashboard content')).not.toBeInTheDocument();
+    expect(toastStore.toast.error).not.toHaveBeenCalledWith(
+      'La sesión expiró. Inicia sesión nuevamente.',
+    );
   });
 });
 
@@ -96,24 +115,10 @@ describe('ProtectedRoute', () => {
     );
   });
 
-  it('redirects unauthenticated users to login', () => {
-    render(
-      <AuthProvider>
-        <MemoryRouter initialEntries={[ROUTES.dashboard]}>
-          <Routes>
-            <Route element={<LoginPage />} path={ROUTES.login} />
-            <Route element={<ProtectedRoute />}>
-              <Route
-                element={<div>Dashboard content</div>}
-                path={ROUTES.dashboard}
-              />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </AuthProvider>,
-    );
+  it('redirects unauthenticated users to login', async () => {
+    renderLoginFlow(ROUTES.dashboard);
 
-    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Email')).toBeInTheDocument();
     expect(screen.queryByText('Dashboard content')).not.toBeInTheDocument();
   });
 

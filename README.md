@@ -2,58 +2,74 @@
 
 Sistema operativo para la operación diaria de edificios. Modela trabajo operativo mediante eventos, no tickets.
 
-**Versión actual:** `0.18.0-alpha` (Release Candidate — demostrable de punta a punta).
+**Versión actual:** `0.18.0-alpha` (Release Candidate)
 
-Este README permite levantar el proyecto desde cero sin conocimiento previo del código.
+Este documento es el **único punto de entrada** para levantar, demostrar y retomar el proyecto.
 
 ---
 
-## Requisitos
+## ¿Qué es `0.18.0-alpha`?
 
-| Herramienta | Versión mínima |
-|-------------|----------------|
-| Node.js | 20.x |
-| npm | 10.x |
-| Docker | Para PostgreSQL local |
+| | |
+|---|---|
+| **Qué es** | Release Candidate — primera versión **demostrable de punta a punta** |
+| **Qué incluye** | Backend NestJS (Operations + Authentication), PostgreSQL en Docker, cliente web React, login por email, dashboard operativo, visor de incidencias, outbox transaccional, Swagger, 658 tests backend + 40 tests frontend |
+| **Para qué sirve** | Presentar el producto, validar arquitectura, onboarding de desarrolladores, base para evolución hacia `1.0` |
+| **Qué NO es** | Versión de producción. Sin roles, sin refresh tokens, sin despliegue cloud documentado |
+
+### Qué queda para la futura `1.0`
+
+- Resolver deuda **P1** del [architecture backlog](docs/architecture_backlog.md) (Event Log, concurrencia, integridad referencial)
+- Hardening de seguridad (autorización granular, rotación de tokens)
+- Acciones de escritura desde la UI (detectar, asignar, resolver incidencias)
+- Observabilidad exportable y despliegue productivo
+- Tests E2E del flujo completo
+
+Detalle: sección [Known Limitations](#known-limitations) más abajo.
 
 ---
 
 ## Inicio rápido
 
+Requisitos: **Node.js 20.x**, **npm 10.x**, **Docker**.
+
 ```bash
-# 1. Clonar
+# 1. Clonar e instalar
 git clone <url-del-repositorio>
 cd EdificiOS
-
-# 2. Instalar dependencias
 npm install
 
-# 3. Variables de entorno
+# 2. Variables de entorno
 cp .env.example .env
-# En PowerShell: Copy-Item .env.example .env
+# PowerShell: Copy-Item .env.example .env
 
-# 4. Levantar PostgreSQL
-npm run db:up
+# 3. Base de datos (Docker + migraciones)
+npm run db:setup
 
-# 5. Aplicar migraciones (base de datos vacía)
-npm run db:migrate
-
-# 6. Verificar que todo compila y los tests pasan
+# 4. Verificar backend
 npm run build
 npm test
 
-# 7. Levantar la aplicación
+# 5. Levantar API (exportar .env primero — ver nota abajo)
 npm run start:dev
+
+# 6. Levantar frontend (otra terminal)
+cd frontend
+npm install
+npm run dev
 ```
 
-La API queda disponible en `http://localhost:3000`.
+| Servicio | URL |
+|----------|-----|
+| API | http://localhost:3000 |
+| Swagger | http://localhost:3000/api/docs |
+| Frontend | http://localhost:5173 |
+| Health | http://localhost:3000/api/v1/health |
+| Info | http://localhost:3000/api/v1/info |
 
-> **Nota:** NestJS no carga `.env` automáticamente. Antes de `npm run start` o `npm run start:dev`, exportá las variables en tu shell:
+> **Importante:** NestJS no carga `.env` automáticamente. Antes de `npm run start:dev`, exportá las variables en tu shell:
 >
-> ```bash
-> # Linux / macOS
-> export $(grep -v '^#' .env | xargs)
->
+> ```powershell
 > # PowerShell
 > Get-Content .env | ForEach-Object {
 >   if ($_ -match '^(?<key>[^#=]+)=(?<value>.*)$') {
@@ -61,165 +77,166 @@ La API queda disponible en `http://localhost:3000`.
 >   }
 > }
 > ```
+>
+> ```bash
+> # Linux / macOS
+> export $(grep -v '^#' .env | xargs)
+> ```
 
-### Frontend (demostración)
+### Primera demo
 
-```bash
-cd frontend
-npm install
-npm run dev
+1. Completar el [inicio rápido](#inicio-rápido) anterior.
+2. Crear datos de bootstrap (usuario + incidencia) — una vez por entorno vacío. Ver [docs/DEMO.md](docs/DEMO.md).
+3. Seguir el guión de presentación: [docs/DEMO.md](docs/DEMO.md) (10–15 min, solo interfaz web).
+
+Antes de presentar o etiquetar, usar [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
+
+---
+
+## Estructura del repositorio
+
+```
+EdificiOS/
+├── src/                      # Backend NestJS (monolito modular, Clean Architecture)
+│   ├── operations/           # Bounded context: Incident, Evidence, Site, Shift, …
+│   ├── authentication/       # Bounded context: usuarios, login JWT, /me
+│   ├── health/               # GET /health
+│   ├── info/                 # GET /info
+│   ├── outbox/               # Transactional Outbox
+│   ├── config/               # ApplicationConfig
+│   └── shared/               # Shared kernel (HTTP helpers, pools, DTOs Swagger)
+├── frontend/                 # Cliente web React 19 + Vite + TanStack Query
+│   └── src/
+│       ├── api/              # Clientes Axios (public + authenticated)
+│       ├── auth/             # AuthContext, ProtectedRoute, sesión
+│       ├── pages/            # Home, Login, Dashboard, Incidents, IncidentDetails
+│       ├── components/       # UI, dashboard/, incident/, layout/
+│       └── hooks/            # TanStack Query hooks
+├── test/                     # Tests de integración backend (Jest)
+├── docs/                     # Documentación del proyecto
+│   ├── DEMO.md               # Guía de presentación (10–15 min)
+│   ├── RELEASE_CHECKLIST.md  # Verificación pre-release
+│   ├── GUIA_USO.md           # Guía operativa detallada
+│   ├── architecture_backlog.md
+│   └── architecture_reviews/
+├── scripts/                  # migrate.js, wait-for-postgres.js
+├── docker-compose.yml        # PostgreSQL 16
+├── AGENTS.md                 # Constitución de ingeniería
+└── package.json
 ```
 
-El cliente web queda en `http://localhost:5173` con proxy a la API en `:3000`.
+---
 
-| Pantalla | Ruta |
-|----------|------|
-| Home | `/` |
-| Login | `/login` (pegar JWT manualmente) |
-| Dashboard | `/dashboard` |
-| Incident Details | `/incidents/:incidentId` |
+## Comandos principales
 
-Ver `frontend/README.md` y `docs/architecture_reviews/sprint_18_frontend_foundation.md`.
+### Raíz — backend, Docker, migraciones
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run build` | Compila el backend TypeScript |
+| `npm test` | Tests backend — **70 suites / 658 tests** |
+| `npm run start` | Inicia la API en producción local |
+| `npm run start:dev` | API con recarga en caliente (`:3000`) |
+| `npm run db:up` | Levanta PostgreSQL (Docker) |
+| `npm run db:down` | Detiene PostgreSQL |
+| `npm run db:migrate` | Aplica migraciones SQL |
+| `npm run db:setup` | `db:up` + espera + `db:migrate` |
+| `npm run db:reset` | Elimina volumen y recrea PostgreSQL |
+
+### `frontend/` — cliente web
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Desarrollo (`:5173`, proxy a API) |
+| `npm run build` | Build de producción |
+| `npm test` | Tests frontend — **14 suites / 40 tests** |
+| `npm run preview` | Sirve `dist/` localmente |
+
+### Verificación completa (pre-release)
+
+```bash
+# Backend
+npm run build && npm test
+
+# Frontend
+cd frontend && npm run build && npm test
+```
+
+Checklist detallado: [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md).
+
+---
+
+## Demo funcional (interfaz web)
+
+El recorrido completo **no requiere Swagger** durante la presentación:
+
+```
+Home → Login → Dashboard → Incidencia → Timeline → Dashboard → Logout
+```
+
+| Pantalla | Ruta | API principal |
+|----------|------|---------------|
+| Home | `/` | `GET /api/v1/info` |
+| Login | `/login` | `POST /authentication/login`, `GET /authentication/me` |
+| Dashboard | `/dashboard` | `GET /operations/dashboard` |
+| Incidencias | `/incidents` | Reutiliza caché del dashboard |
+| Detalle | `/incidents/:id` | `GET incidents/:id`, `GET .../timeline` |
+
+- **Guía de presentación:** [docs/DEMO.md](docs/DEMO.md)
+- **Cliente web:** [frontend/README.md](frontend/README.md)
+- **Troubleshooting:** [docs/GUIA_USO.md](docs/GUIA_USO.md)
 
 ---
 
 ## Variables de entorno
 
-Copiar `.env.example` a `.env`:
-
 | Variable | Descripción | Valor por defecto |
 |----------|-------------|-------------------|
 | `DATABASE_URL` | Conexión PostgreSQL | `postgresql://edificios:edificios@localhost:5432/edificios` |
-| `EVIDENCE_STORAGE_PATH` | Directorio de archivos físicos de Evidence | `./storage/evidences` |
+| `EVIDENCE_STORAGE_PATH` | Directorio de Evidence | `./storage/evidences` |
 
 ---
 
-## Base de datos
+## Known Limitations
 
-### Levantar PostgreSQL
+Deuda técnica **documentada y aceptada** en `0.18.0-alpha`. No se oculta; el detalle priorizado vive en [docs/architecture_backlog.md](docs/architecture_backlog.md).
 
-```bash
-npm run db:up
-```
+### P1 — impacto estructural (resolver antes de `1.0`)
 
-Usa Docker Compose con PostgreSQL 16. Credenciales definidas en `docker-compose.yml`.
+| Ítem | Resumen |
+|------|---------|
+| Event Log incompleto | `workflow.flow.detected` sin `assetId`/`shiftId`/`actorId` en payload |
+| Integridad referencial | Validación de Site/Actor inconsistente entre casos de uso |
+| Dos `ActorId` | UUID en Actor vs string libre en Evidence |
+| Concurrencia optimista | Transiciones concurrentes sin guard en proyección |
+| Mapeo HTTP | Errores de dominio que devuelven 500 en lugar de 409/404 |
 
-### Aplicar migraciones
+### P2 — deuda consciente (selección relevante para demo)
 
-```bash
-npm run db:migrate
-```
+| Área | Limitación |
+|------|------------|
+| **Frontend** | UI de solo lectura; sin CRUD de incidencias/assets; sin selector de `actorId`; sin E2E Playwright |
+| **Authentication** | Sin passwords, refresh tokens, roles ni permisos granulares |
+| **Arquitectura** | Operations importa `JwtAuthenticationGuard` de Authentication ([AR03](docs/architecture_reviews/architecture_review_03_bounded_contexts.md)) |
+| **API** | `/authentication/me` sin `actorId`; dashboard acepta `?actorId=` pero la UI usa el del usuario cuando exista |
+| **Operaciones** | Activity feed y timeline con límites fijos; sin paginación en UI |
+| **Plataforma** | Versión hardcodeada en `ApplicationConfig`; sin métricas Prometheus exportables |
 
-Ejecuta en orden los archivos SQL de `src/operations/infrastructure/migrations/`:
+### Deliberadamente ausente (no es deuda)
 
-| Archivo | Tablas |
-|---------|--------|
-| `001_initial.sql` | `incidents`, `events`, `outbox` |
-| `002_evidences.sql` | `evidences` |
-| `003_event_evidences.sql` | `event_evidences` |
-
-Las migraciones están pensadas para una base vacía. Si necesitás reiniciar:
-
-```bash
-npm run db:reset
-npm run db:migrate
-```
-
-### Setup completo en un paso
-
-```bash
-npm run db:setup
-```
-
-Levanta PostgreSQL, espera a que esté listo y aplica migraciones.
+Passwords, RabbitMQ, CQRS completo, Event Sourcing completo, Foreign Keys entre agregados, microservicios. Ver [architecture_backlog.md — Deliberadamente ausente](docs/architecture_backlog.md).
 
 ---
 
-## Tests
+## Arquitectura (resumen)
 
-```bash
-npm test
-```
+- **Monolito modular** con Clean Architecture (`domain → application → infrastructure`).
+- **Event Log** append-only como fuente de verdad operativa.
+- **Transactional Outbox** para publicación futura de eventos.
+- **Dominio puro:** TypeScript sin NestJS, Prisma ni PostgreSQL.
+- **Evidence** respalda Domain Events (ADR-006), no Incident directamente.
 
-Los tests de integración usan mocks de PostgreSQL y no requieren base de datos en ejecución. Estado actual: **621/621 OK** (63 suites).
-
-| Suite | Qué verifica |
-|-------|--------------|
-| `evidence.spec.ts` | Dominio Evidence y Value Objects |
-| `incident-lifecycle.integration.spec.ts` | Ciclo de vida Incident |
-| `capture-evidence.integration.spec.ts` | CaptureEvidenceUseCase |
-| `capture-evidence.http.integration.spec.ts` | Endpoint multipart HTTP |
-| `postgres-*.integration.spec.ts` | Repositorios PostgreSQL (mock) |
-
----
-
-## Aplicación
-
-```bash
-# Desarrollo con recarga
-npm run start:dev
-
-# Producción local
-npm run build
-npm run start
-```
-
-Puerto: **3000** (configurado en `src/main.ts`).
-
----
-
-## Endpoints HTTP
-
-### Incident Lifecycle
-
-| Método | Ruta | Body |
-|--------|------|------|
-| `POST` | `/api/v1/operations/incidents` | `{ "description": "..." }` |
-| `POST` | `/api/v1/operations/incidents/:id/assign` | `{ "actorId": "..." }` |
-| `POST` | `/api/v1/operations/incidents/:id/start` | — |
-| `POST` | `/api/v1/operations/incidents/:id/resolve` | — |
-
-### Evidence
-
-| Método | Ruta | Body |
-|--------|------|------|
-| `POST` | `/api/v1/operations/events/:eventId/evidence` | `multipart/form-data`: `file`, `actorId`, `caption?` |
-
-Respuesta Evidence: `201 Created` → `{ "evidenceId": "..." }`.
-
-### Ejemplo: detectar incidencia
-
-```bash
-curl -X POST http://localhost:3000/api/v1/operations/incidents \
-  -H "Content-Type: application/json" \
-  -d "{\"description\":\"Olor a quemado en bomba principal.\"}"
-```
-
-### Ejemplo: capturar evidencia
-
-```bash
-curl -X POST http://localhost:3000/api/v1/operations/events/<eventId>/evidence \
-  -F "file=@./test/fixtures/bomba-principal.jpg" \
-  -F "actorId=00000000-0000-0000-0000-000000000001" \
-  -F "caption=Olor a quemado en bomba principal."
-```
-
----
-
-## Estructura del proyecto
-
-```
-src/                  # Backend NestJS (monolito modular)
-  operations/
-  authentication/
-  health/
-  info/
-  shared/
-  config/
-frontend/             # Cliente web React (Release Candidate)
-test/                 # Tests de integración backend
-docs/                 # Documentación del proyecto
-```
+Antes de proponer cambios: leer [AGENTS.md](AGENTS.md) y las reglas en `docs/06_rules.md`.
 
 ---
 
@@ -227,41 +244,19 @@ docs/                 # Documentación del proyecto
 
 | Documento | Contenido |
 |-----------|-----------|
-| [docs/00_project_brief.md](docs/00_project_brief.md) | Qué es EdificiOS |
-| [docs/01_architecture.md](docs/01_architecture.md) | Capas y persistencia |
-| [docs/GUIA_USO.md](docs/GUIA_USO.md) | Guía de uso local (DB, API, frontend) |
-| [docs/glossary.md](docs/glossary.md) | Lenguaje ubicuo (dominio + frontend) |
-| [docs/05_current_status.md](docs/05_current_status.md) | Estado actual y backlog |
-| [docs/06_rules.md](docs/06_rules.md) | Reglas de ingeniería |
+| **[docs/DEMO.md](docs/DEMO.md)** | Guía de presentación 10–15 min |
+| **[docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)** | Verificación pre-release |
+| [docs/GUIA_USO.md](docs/GUIA_USO.md) | Guía operativa local (DB, API, troubleshooting) |
+| [docs/05_current_status.md](docs/05_current_status.md) | Estado actual del proyecto |
+| [docs/architecture_backlog.md](docs/architecture_backlog.md) | Deuda técnica priorizada (P1 / P2) |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | Historial de cambios |
-| [docs/architecture_decisions/](docs/architecture_decisions/) | ADRs |
-| [docs/field_stories/](docs/field_stories/) | Historias de campo |
-| [AGENTS.md](AGENTS.md) | Constitución para agentes de IA |
+| [docs/glossary.md](docs/glossary.md) | Lenguaje ubicuo |
+| [docs/01_architecture.md](docs/01_architecture.md) | Capas y persistencia |
+| [frontend/README.md](frontend/README.md) | Cliente web |
+| [docs/architecture_reviews/](docs/architecture_reviews/) | Architecture Reviews por sprint |
 
 ---
 
-## Arquitectura (resumen)
+## Licencia
 
-- **Monolito modular** con Clean Architecture.
-- **Event Log** como fuente de verdad (append-only).
-- **Transactional Outbox** para publicación futura de eventos.
-- **Dominio puro**: sin NestJS, sin PostgreSQL, sin filesystem.
-- **Evidence** respalda **Domain Events**, no Incident directamente (tabla puente `event_evidences`).
-
-Antes de proponer cambios, leer `AGENTS.md` y `docs/AI_CONTEXT.md`.
-
----
-
-## Scripts npm
-
-| Script | Descripción |
-|--------|-------------|
-| `npm run build` | Compila TypeScript |
-| `npm test` | Ejecuta todos los tests |
-| `npm run start` | Inicia la aplicación |
-| `npm run start:dev` | Inicia con recarga en caliente |
-| `npm run db:up` | Levanta PostgreSQL (Docker) |
-| `npm run db:down` | Detiene PostgreSQL |
-| `npm run db:reset` | Elimina volumen y recrea PostgreSQL |
-| `npm run db:migrate` | Aplica migraciones SQL |
-| `npm run db:setup` | `db:up` + espera + `db:migrate` |
+ISC (ver `package.json`).

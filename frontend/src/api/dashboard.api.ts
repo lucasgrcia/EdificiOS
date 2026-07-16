@@ -1,5 +1,5 @@
 import type { DashboardView } from '../types/dashboard';
-import { publicApiClient } from './client';
+import { authenticatedApiClient } from './client';
 
 type FetchDashboardParams = {
   actorId?: string;
@@ -8,11 +8,12 @@ type FetchDashboardParams = {
 export async function fetchDashboard(
   params?: FetchDashboardParams,
 ): Promise<DashboardView> {
-  const response = await publicApiClient.get<DashboardView>(
+  const actorId = params?.actorId?.trim();
+
+  const response = await authenticatedApiClient.get<DashboardView>(
     '/operations/dashboard',
     {
-      params:
-        params?.actorId !== undefined ? { actorId: params.actorId } : undefined,
+      params: actorId !== undefined && actorId.length > 0 ? { actorId } : undefined,
     },
   );
 
