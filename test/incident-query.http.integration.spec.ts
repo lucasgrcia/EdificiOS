@@ -1,8 +1,8 @@
 import {
-  FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createFastifyTestApp } from './support/create-fastify-test-app';
 
 import { GetIncidentByIdUseCase } from '../src/operations/application/get-incident-by-id-use-case';
 import { GetIncidentTimelineUseCase } from '../src/operations/application/get-incident-timeline-use-case';
@@ -13,6 +13,7 @@ import { NotificationQueryRepository } from '../src/operations/application/notif
 import { IncidentQueryController } from '../src/operations/infrastructure/http/incident-query.controller';
 import { GetIncidentByIdParamsPipe } from '../src/operations/infrastructure/http/get-incident-by-id-params.pipe';
 import { ListIncidentsQueryPipe } from '../src/operations/infrastructure/http/list-incidents-query.pipe';
+import { operationsHttpTestAuthProviders } from './support/operations-http-test-auth';
 
 describe('Incident query HTTP integration', () => {
   const siteId = '00000000-0000-0000-0000-000000000010';
@@ -78,6 +79,7 @@ describe('Incident query HTTP integration', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [IncidentQueryController],
       providers: [
+        ...operationsHttpTestAuthProviders,
         ListIncidentsQueryPipe,
         GetIncidentByIdParamsPipe,
         {
@@ -95,9 +97,7 @@ describe('Incident query HTTP integration', () => {
       ],
     }).compile();
 
-    app = moduleRef.createNestApplication(new FastifyAdapter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    app = await createFastifyTestApp(moduleRef);
   });
 
   afterEach(async () => {
@@ -302,6 +302,7 @@ describe('Incident query HTTP integration', () => {
       const moduleRef = await Test.createTestingModule({
         controllers: [IncidentQueryController],
         providers: [
+          ...operationsHttpTestAuthProviders,
           GetIncidentByIdParamsPipe,
           {
             provide: ListIncidentsUseCase,
@@ -322,9 +323,7 @@ describe('Incident query HTTP integration', () => {
         ],
       }).compile();
 
-      enrichmentApp = moduleRef.createNestApplication(new FastifyAdapter());
-      await enrichmentApp.init();
-      await enrichmentApp.getHttpAdapter().getInstance().ready();
+      enrichmentApp = await createFastifyTestApp(moduleRef);
     });
 
     afterEach(async () => {

@@ -5,3 +5,12 @@ export type AuthenticatedUser = {
   status: string;
   createdAt: string;
 };
+
+export type LoginRequest = {
+  email: string;
+};
+
+export type LoginResponse = {
+  accessToken: string;
+  expiresIn: number;
+};

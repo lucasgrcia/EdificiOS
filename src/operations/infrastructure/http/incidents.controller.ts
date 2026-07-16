@@ -7,8 +7,10 @@ import {
   NotFoundException,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
+import { JwtAuthenticationGuard } from '../../../authentication/infrastructure/http/jwt-authentication.guard';
 import { AssignIncidentUseCase } from '../../application/assign-incident-use-case';
 import { DetectIncidentUseCase } from '../../application/detect-incident-use-case';
 import { IncidentTransitionResult } from '../../application/incident-persistence';
@@ -22,6 +24,7 @@ import { AssignIncidentRequestPipe } from './assign-incident-request.pipe';
 import { DetectIncidentRequestDto } from './detect-incident.dto';
 import { DetectIncidentRequestPipe } from './detect-incident-request.pipe';
 
+@UseGuards(JwtAuthenticationGuard)
 @Controller('api/v1/operations/incidents')
 export class IncidentsController {
   constructor(

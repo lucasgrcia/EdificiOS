@@ -7,14 +7,17 @@ import {
   NotFoundException,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
+import { JwtAuthenticationGuard } from '../../../authentication/infrastructure/http/jwt-authentication.guard';
 import { ActorResult } from '../../application/actor-result';
 import { GetActorByIdUseCase } from '../../application/get-actor-by-id-use-case';
 import { RegisterActorUseCase } from '../../application/register-actor-use-case';
 import { RegisterActorRequestDto } from './register-actor.dto';
 import { RegisterActorRequestPipe } from './register-actor-request.pipe';
 
+@UseGuards(JwtAuthenticationGuard)
 @Controller('api/v1/operations/actors')
 export class ActorsController {
   constructor(

@@ -13,6 +13,7 @@ import { CaptureEvidenceUseCase } from '../src/operations/application/capture-ev
 import { ListEvidenceByEventUseCase } from '../src/operations/application/list-evidence-by-event-use-case';
 import { CaptureEvidenceMultipartPipe } from '../src/operations/infrastructure/http/capture-evidence-multipart.pipe';
 import { EventsController } from '../src/operations/infrastructure/http/events.controller';
+import { operationsHttpTestAuthProviders } from './support/operations-http-test-auth';
 import { ListEvidenceByEventParamsPipe } from '../src/operations/infrastructure/http/list-evidence-by-event-params.pipe';
 
 describe('Capture evidence HTTP integration', () => {
@@ -32,6 +33,7 @@ describe('Capture evidence HTTP integration', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [EventsController],
       providers: [
+        ...operationsHttpTestAuthProviders,
         CaptureEvidenceMultipartPipe,
         ListEvidenceByEventParamsPipe,
         {

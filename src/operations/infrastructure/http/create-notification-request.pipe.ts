@@ -1,9 +1,9 @@
-import {
-  BadRequestException,
-  Injectable,
-  PipeTransform,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
+import {
+  isHttpPayloadObject,
+  readRequiredString,
+} from '../../../shared/http/http-request-parsing';
 import { CreateNotificationRequestDto } from './notification.dto';
 
 const UUID_PATTERN =
@@ -14,32 +14,28 @@ export class CreateNotificationRequestPipe
   implements PipeTransform<unknown, CreateNotificationRequestDto>
 {
   transform(value: unknown): CreateNotificationRequestDto {
-    if (!this.isObject(value)) {
+    if (!isHttpPayloadObject(value)) {
       throw new BadRequestException('Notification payload is required.');
     }
 
     return {
       recipientId: this.readRecipientId(value),
-      type: this.readRequiredString(
+      type: readRequiredString(
         value,
         'type',
         'Notification type is required.',
       ),
-      channel: this.readRequiredString(
+      channel: readRequiredString(
         value,
         'channel',
         'Notification channel is required.',
       ),
-      message: this.readRequiredString(
+      message: readRequiredString(
         value,
         'message',
         'Notification message is required.',
       ),
     };
-  }
-
-  private isObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null;
   }
 
   private readRecipientId(value: Record<string, unknown>): string {
@@ -58,23 +54,5 @@ export class CreateNotificationRequestPipe
     }
 
     return trimmed.toLowerCase();
-  }
-
-  private readRequiredString(
-    value: Record<string, unknown>,
-    field: string,
-    message: string,
-  ): string {
-    if (!(field in value) || typeof value[field] !== 'string') {
-      throw new BadRequestException(message);
-    }
-
-    const trimmed = value[field].trim();
-
-    if (trimmed.length === 0) {
-      throw new BadRequestException(message);
-    }
-
-    return trimmed;
   }
 }

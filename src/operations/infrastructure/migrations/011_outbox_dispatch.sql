@@ -1,0 +1,5 @@
+ALTER TABLE outbox
+  ADD COLUMN retry_count integer NOT NULL DEFAULT 0;
+
+ALTER TABLE outbox
+  ADD COLUMN last_error text;

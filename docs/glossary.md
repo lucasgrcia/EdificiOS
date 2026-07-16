@@ -620,6 +620,14 @@ Vista optimizada para lectura. Tabla `incidents` con `current_projection_state` 
 
 Tabla `outbox`. Registro pendiente de publicación de un Domain Event. Patrón Transactional Outbox. Escribe en la misma transacción que el Event Log y la proyección.
 
+**Dispatch (RC Hardening PR5):** módulo `src/outbox/` consume mensajes `pending` vía `OutboxDispatcher`, los enruta a handlers pluggables (`NotificationOutboxHandler` en MVP) y marca `processed` o `failed` con reintentos (`retry_count`, `last_error`). El dispatcher no conoce el dominio Operations.
+
+**Flujo completo:**
+
+```
+Transaction → outbox (pending) → OutboxDispatcher → Handler → processed | failed
+```
+
 ---
 
 ### Policy

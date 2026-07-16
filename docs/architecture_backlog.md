@@ -11,7 +11,17 @@ Este documento es la **fuente canónica** de ítems P1 y P2. `docs/05_current_st
 - No agregar ítems sin justificación vinculada a una review, ADR o Field Story.
 - Al cerrar un ítem, marcarlo como resuelto con sprint y PR.
 
-Última consolidación: 2026-07-14 (post Sprint 18 — Release Candidate `0.18.0-alpha`).
+Última consolidación: 2026-07-15 (post Architecture Reviews 01–03 — `0.18.0-alpha`).
+
+---
+
+## Resueltos (Architecture Reviews post-RC)
+
+### `SiteId` duplicado en dominio — RESUELTO (AR01, 2026-07-15)
+
+**Origen:** Sprint 5 Review, AR01.
+
+**Resolución:** eliminado `shift/value-objects/site-id.ts`; Shift importa el canonical `site/value-objects/site-id.ts`. Asset y Shift comparten identidad tipada.
 
 ---
 
@@ -50,15 +60,7 @@ Ordenados por impacto estructural descendente.
 
 ---
 
-### 3. `SiteId` duplicado en dominio
-
-**Origen:** Sprint 5 Review, ADR-007 consecuencias.
-
-**Problema:** coexisten `domain/site/value-objects/site-id.ts` y `domain/shift/value-objects/site-id.ts`. Son tipos distintos con la misma semántica.
-
-**Justificación:** rompe identidad compartida entre agregados; `equals()` no cruza límites; refactors de Site pueden desalinear Asset y Shift sin que TypeScript lo detecte.
-
-**Dirección mínima:** un único `SiteId` importado por Asset y Shift.
+### 3. ~~`SiteId` duplicado en dominio~~ — RESUELTO (ver sección Resueltos)
 
 ---
 
@@ -252,7 +254,6 @@ Deuda real del cliente web. Sin endpoints ni dominio nuevos hasta que una Field 
 
 | Ítem | Origen | Justificación |
 |------|--------|---------------|
-| Login real | Sprint 18 PR1 | `LoginPage` acepta JWT pegado; sin endpoint de credenciales ni password en backend |
 | Refresh Token | Sprint 18 PR1 | JWT en `localStorage` sin rotación ni renovación automática |
 | Actor selector en Dashboard | Sprint 18 PR2 | Backend expone `GET /dashboard?actorId=`; UI no tiene selector de Actor |
 | CRUD de Incident desde UI | Sprint 18 PR3 | Incident Viewer es solo lectura; detect/assign/resolve solo vía API/Swagger |
@@ -260,7 +261,7 @@ Deuda real del cliente web. Sin endpoints ni dominio nuevos hasta que una Field 
 | Filtros en listas | Sprint 18 PR2/PR3 | Sin búsqueda por Site, status ni filtros en Activity Feed o Timeline |
 | Paginación en listas UI | Sprint 18 PR2/PR3 | Activity feed, notifications y timeline usan límites fijos del backend |
 | Mark as read en Notifications UI | Sprint 12 + Sprint 18 PR2 | Dominio define `READ`; sin interacción en cliente |
-| Tests automatizados frontend | Sprint 18 PR5 | Sin unit ni E2E; validación manual + build |
+| Tests E2E frontend | Sprint 18 PR5 | Vitest cubre login/logout; sin Playwright/Cypress |
 | API URL en build de producción | Sprint 18 PR1 | Proxy Vite solo en desarrollo; sin variable de entorno para despliegue |
 
 ### Sprint 17 — Authentication (futuro)
@@ -269,20 +270,25 @@ Deuda real del cliente web. Sin endpoints ni dominio nuevos hasta que una Field 
 |------|--------|---------------|
 | Refresh Tokens | Sprint 16 PR4, Sprint 17 | Sin emisión ni rotación de tokens; solo validación de JWT externo |
 | Password Hashing | Sprint 16 PR3, Sprint 17 | `CreateUserUseCase` persiste usuario sin password ni hash |
-| Login Credentials | Sprint 16 PR3, Sprint 17 | Solo `POST /users` (registro); sin endpoint de login ni verificación de credenciales |
 | Roles | Sprint 15 PR3, Sprint 17 | Sin modelo de roles ni asignación por usuario |
 | Permissions | Sprint 15 PR3, Sprint 17 | Sin permisos granulares por endpoint o recurso |
 | Authorization Policies | Sprint 15 PR3, Sprint 17 | Sin guards ni políticas de autorización más allá de autenticación en `/me` |
+
+### Acoplamiento entre bounded contexts (post-RC)
+
+| Ítem | Origen | Justificación |
+|------|--------|---------------|
+| Operations importa `AuthenticationModule` y `JwtAuthenticationGuard` | AR03 post-RC | RC Hardening PR4; infra HTTP acoplada entre BCs; requiere ADR para guard transversal |
+| Swagger `shared` importa DTOs de Authentication y Operations | AR03 | Documentación OpenAPI; no afecta runtime |
 
 ### Sprint 15 — API Platform (futuro)
 
 | Ítem | Origen | Justificación |
 |------|--------|---------------|
-| Autorización | Sprint 15 PR3 | Sin roles ni permisos por endpoint; cualquier cliente puede invocar la API |
 | Rate limiting | Sprint 15 PR2 | Sin límite de requests por IP o Actor; riesgo de abuso en despliegue público |
 | Versionado múltiple (v2) | Sprint 15 PR4 | `apiPrefix` fijo `/api/v1`; sin estrategia de coexistencia de versiones |
 | Generación automática de SDKs OpenAPI | Sprint 15 PR3 | Spec disponible en `/api/docs-json`; sin pipeline de clientes TypeScript/Java/etc. |
-| Configuración desde variables de entorno | Sprint 15 PR4 | `ApplicationConfig` con valores hardcodeados; `environment` y `version` no leen `NODE_ENV` ni `package.json`; Health aún con versión propia (`0.13.0-alpha`) |
+| Configuración desde variables de entorno | Sprint 15 PR4 | `ApplicationConfig` con valores hardcodeados; `environment` y `version` no leen `NODE_ENV` ni `package.json` |
 
 ### Sprint 14 — Observability (futuro)
 
@@ -299,7 +305,7 @@ Deuda real del cliente web. Sin endpoints ni dominio nuevos hasta que una Field 
 
 | Ítem | Origen | Justificación |
 |------|--------|---------------|
-| Versión desde `package.json` | Sprint 13 PR3/PR4 | `0.13.0-alpha` duplicada en Health e Info como constante |
+| Versión desde `package.json` | Sprint 13 PR3/PR4 | `version` hardcodeada en `ApplicationConfig`; no lee `package.json` automáticamente |
 | `environment` configurable | Sprint 13 PR4 | Valor fijo `development`; sin lectura de `NODE_ENV` |
 | Readiness / liveness separados | Sprint 13 PR3 | Un solo endpoint `/health` con `status` y `checks`; sin distinción K8s |
 | Métricas Prometheus | Sprint 13 PR3 | `ApplicationMetrics` en memoria (Sprint 14 PR4); sin scrape Prometheus |
@@ -366,6 +372,14 @@ Deuda real del cliente web. Sin endpoints ni dominio nuevos hasta que una Field 
 | JWT HTTP Guard | Sprint 17 PR3 | `JwtAuthenticationGuard` en `GET /api/v1/authentication/me` |
 | Swagger Bearer Authentication | Sprint 17 PR4 | Esquema Bearer en OpenAPI; `/me` documentado como protegido |
 | Frontend Foundation (RC) | Sprint 18 PR1–PR5 | Cliente React `0.18.0-alpha`; `docs/GUIA_USO.md` |
+| Health version desde ApplicationConfig | RC Hardening PR1 | `GetHealthUseCase` consume `ApplicationConfig.version` |
+| Login JWT (`POST /authentication/login`) | RC Hardening PR2 | Emisión de token por email; sin passwords |
+| Frontend login integrado | RC Hardening PR3 | Email → JWT → `GET /me`; Vitest (8 tests) |
+| Operations protegidas con JWT | RC Hardening PR4 | `JwtAuthenticationGuard` en todos los controllers Operations |
+| OpenAPI Bearer en Operations | RC Hardening PR4 | Endpoints `/operations/*` documentados con seguridad |
+| Outbox Dispatcher | RC Hardening PR5 | Módulo `outbox`: claim, processor, handlers, reintentos |
+| Transactional Outbox completo | RC Hardening PR5 | Write transaccional + consumo asíncrono |
+| Documentación RC final | RC Hardening PR6 | CHANGELOG, status, backlog, `release_candidate_hardening.md` |
 
 ---
 
@@ -373,7 +387,7 @@ Deuda real del cliente web. Sin endpoints ni dominio nuevos hasta que una Field 
 
 No son deuda: decisiones de producto documentadas en `05_current_status.md`.
 
-- Login / passwords / emisión de JWT / refresh tokens / roles / permisos / políticas de autorización (validación JWT operativa en `GET /me`; frontend acepta JWT pegado)
+- Passwords / refresh tokens / roles / permisos / políticas de autorización granular (login por email + JWT; Operations protegidas; sin verificación de credenciales)
 - Sincronización offline
 - Event Bus distribuido (RabbitMQ, Redis)
 - Almacenamiento en nube

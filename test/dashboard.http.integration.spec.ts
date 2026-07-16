@@ -1,13 +1,14 @@
 import {
-  FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createFastifyTestApp } from './support/create-fastify-test-app';
 
 import { DashboardView } from '../src/operations/application/dashboard-view';
 import { GetOperationsDashboardUseCase } from '../src/operations/application/get-operations-dashboard-use-case';
 import { NotificationView } from '../src/operations/application/notification-view';
 import { DashboardController } from '../src/operations/infrastructure/http/dashboard.controller';
+import { operationsHttpTestAuthProviders } from './support/operations-http-test-auth';
 
 describe('Dashboard HTTP integration', () => {
   const dashboard: DashboardView = {
@@ -136,6 +137,7 @@ describe('Dashboard HTTP integration', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [DashboardController],
       providers: [
+        ...operationsHttpTestAuthProviders,
         {
           provide: GetOperationsDashboardUseCase,
           useValue: getOperationsDashboardUseCase,
@@ -143,9 +145,7 @@ describe('Dashboard HTTP integration', () => {
       ],
     }).compile();
 
-    app = moduleRef.createNestApplication(new FastifyAdapter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    app = await createFastifyTestApp(moduleRef);
   });
 
   afterEach(async () => {

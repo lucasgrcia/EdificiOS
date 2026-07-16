@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 
+import { AuthenticationModule } from '../authentication/authentication.module';
 import { GetOperationsDashboardUseCase } from './application/get-operations-dashboard-use-case';
 import { GetNotificationByIdUseCase } from './application/get-notification-by-id-use-case';
 import { GetIncidentByIdUseCase } from './application/get-incident-by-id-use-case';
@@ -108,6 +109,7 @@ function createUseCaseDependencies(
 }
 
 @Module({
+  imports: [AuthenticationModule],
   controllers: [
     IncidentsController,
     IncidentQueryController,
@@ -230,12 +232,6 @@ function createUseCaseDependencies(
       inject: [PostgresOperationsPool],
       useFactory: (operationsPool: PostgresOperationsPool) =>
         new PostgresIncidentQueryRepository(operationsPool.pool),
-    },
-    {
-      provide: PostgresIncidentTimelineRepository,
-      inject: [PostgresOperationsPool],
-      useFactory: (operationsPool: PostgresOperationsPool) =>
-        new PostgresIncidentTimelineRepository(operationsPool.pool),
     },
     {
       provide: PostgresIncidentTimelineRepository,

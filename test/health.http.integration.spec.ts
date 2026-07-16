@@ -1,16 +1,20 @@
 import {
-  FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+
+import { createFastifyTestApp } from './support/create-fastify-test-app';
 import { Pool } from 'pg';
 
+import { ApplicationConfig } from '../src/config/application-config';
+import { ApplicationConfigModule } from '../src/config/application-config.module';
 import { GetHealthUseCase } from '../src/health/application/get-health-use-case';
 import { HealthController } from '../src/health/infrastructure/http/health.controller';
 
 describe('Health HTTP integration', () => {
   const fixedTimestamp = new Date('2026-07-11T13:00:00.000Z');
   let app: NestFastifyApplication;
+  let applicationConfig: ApplicationConfig;
   let poolQuery: jest.Mock;
 
   beforeEach(async () => {
@@ -19,11 +23,12 @@ describe('Health HTTP integration', () => {
       .mockResolvedValue({ rowCount: 1, rows: [{ '?column?': 1 }] });
 
     const moduleRef = await Test.createTestingModule({
+      imports: [ApplicationConfigModule],
       controllers: [HealthController],
       providers: [
         {
           provide: GetHealthUseCase,
-          useFactory: () =>
+          useFactory: (config: ApplicationConfig) =>
             new GetHealthUseCase({
               pool: {
                 query: poolQuery,
@@ -31,14 +36,16 @@ describe('Health HTTP integration', () => {
               clock: {
                 now: () => fixedTimestamp,
               },
+              applicationConfig: config,
             }),
+          inject: [ApplicationConfig],
         },
       ],
     }).compile();
 
-    app = moduleRef.createNestApplication(new FastifyAdapter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    applicationConfig = moduleRef.get(ApplicationConfig);
+
+    app = await createFastifyTestApp(moduleRef);
   });
 
   afterEach(async () => {
@@ -70,7 +77,7 @@ describe('Health HTTP integration', () => {
         url: '/api/v1/health',
       });
 
-      expect(response.json().version).toBe('0.13.0-alpha');
+      expect(response.json().version).toBe(applicationConfig.version);
     });
 
     it('returns a timestamp', async () => {

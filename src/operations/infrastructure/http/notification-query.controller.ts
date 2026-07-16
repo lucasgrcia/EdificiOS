@@ -3,14 +3,17 @@ import {
   Get,
   NotFoundException,
   Param,
+  UseGuards,
 } from '@nestjs/common';
 
+import { JwtAuthenticationGuard } from '../../../authentication/infrastructure/http/jwt-authentication.guard';
 import { GetNotificationByIdUseCase } from '../../application/get-notification-by-id-use-case';
 import { ListNotificationsUseCase } from '../../application/list-notifications-use-case';
 import { NotificationView } from '../../application/notification-view';
 import { GetNotificationByIdParamsPipe } from './get-notification-by-id-params.pipe';
 import { ListNotificationsByActorParamsPipe } from './list-notifications-by-actor-params.pipe';
 
+@UseGuards(JwtAuthenticationGuard)
 @Controller('api/v1/operations')
 export class NotificationQueryController {
   constructor(

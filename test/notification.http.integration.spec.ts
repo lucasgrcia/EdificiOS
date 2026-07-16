@@ -1,12 +1,13 @@
 import {
-  FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createFastifyTestApp } from './support/create-fastify-test-app';
 
 import { CreateNotificationUseCase } from '../src/operations/application/create-notification-use-case';
 import { CreateNotificationRequestPipe } from '../src/operations/infrastructure/http/create-notification-request.pipe';
 import { NotificationsController } from '../src/operations/infrastructure/http/notifications.controller';
+import { operationsHttpTestAuthProviders } from './support/operations-http-test-auth';
 
 describe('Notification HTTP integration', () => {
   const notificationId = '00000000-0000-0000-0000-000000000001';
@@ -23,6 +24,7 @@ describe('Notification HTTP integration', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [NotificationsController],
       providers: [
+        ...operationsHttpTestAuthProviders,
         CreateNotificationRequestPipe,
         {
           provide: CreateNotificationUseCase,
@@ -31,9 +33,7 @@ describe('Notification HTTP integration', () => {
       ],
     }).compile();
 
-    app = moduleRef.createNestApplication(new FastifyAdapter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    app = await createFastifyTestApp(moduleRef);
   });
 
   afterEach(async () => {

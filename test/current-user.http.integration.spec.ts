@@ -1,9 +1,9 @@
 import { UnauthorizedException } from '@nestjs/common';
 import {
-  FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createFastifyTestApp } from './support/create-fastify-test-app';
 
 import {
   AUTHENTICATION_CONTEXT,
@@ -143,9 +143,7 @@ describe('Current user HTTP integration', () => {
         ],
       }).compile();
 
-      app = moduleRef.createNestApplication(new FastifyAdapter());
-      await app.init();
-      await app.getHttpAdapter().getInstance().ready();
+      app = await createFastifyTestApp(moduleRef);
     }
 
     afterEach(async () => {

@@ -1,8 +1,8 @@
 import {
-  FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createFastifyTestApp } from './support/create-fastify-test-app';
 
 import { ActorResult } from '../src/operations/application/actor-result';
 import { GetActorByIdUseCase } from '../src/operations/application/get-actor-by-id-use-case';
@@ -17,6 +17,7 @@ import { StartShiftUseCase } from '../src/operations/application/start-shift-use
 import { ActorsController } from '../src/operations/infrastructure/http/actors.controller';
 import { RegisterActorRequestPipe } from '../src/operations/infrastructure/http/register-actor-request.pipe';
 import { SitesController } from '../src/operations/infrastructure/http/sites.controller';
+import { operationsHttpTestAuthProviders } from './support/operations-http-test-auth';
 
 describe('Actor HTTP integration', () => {
   const siteId = '00000000-0000-0000-0000-000000000010';
@@ -55,6 +56,7 @@ describe('Actor HTTP integration', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [ActorsController, SitesController],
       providers: [
+        ...operationsHttpTestAuthProviders,
         RegisterActorRequestPipe,
         {
           provide: RegisterActorUseCase,
@@ -95,9 +97,7 @@ describe('Actor HTTP integration', () => {
       ],
     }).compile();
 
-    app = moduleRef.createNestApplication(new FastifyAdapter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    app = await createFastifyTestApp(moduleRef);
   });
 
   afterEach(async () => {

@@ -123,8 +123,8 @@ Vite proxea `/api` → `http://localhost:3000`. El navegador ve un solo origen (
 |--------|---------|
 | `ApplicationConfig` | `0.18.0-alpha` |
 | `GET /api/v1/info` | `0.18.0-alpha` |
+| `GET /api/v1/health` | `0.18.0-alpha` |
 | Swagger metadata | `0.18.0-alpha` |
-| `GET /api/v1/health` | `0.13.0-alpha` (deuda; constante independiente) |
 
 ---
 

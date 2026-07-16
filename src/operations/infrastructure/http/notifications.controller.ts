@@ -4,8 +4,10 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
+import { JwtAuthenticationGuard } from '../../../authentication/infrastructure/http/jwt-authentication.guard';
 import {
   CreateNotificationResult,
   CreateNotificationUseCase,
@@ -13,6 +15,7 @@ import {
 import { CreateNotificationRequestPipe } from './create-notification-request.pipe';
 import { CreateNotificationRequestDto } from './notification.dto';
 
+@UseGuards(JwtAuthenticationGuard)
 @Controller('api/v1/operations/notifications')
 export class NotificationsController {
   constructor(

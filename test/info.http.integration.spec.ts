@@ -1,23 +1,25 @@
 import {
-  FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createFastifyTestApp } from './support/create-fastify-test-app';
 
+import { ApplicationConfig } from '../src/config/application-config';
 import { ApplicationConfigModule } from '../src/config/application-config.module';
 import { InfoModule } from '../src/info/info.module';
 
 describe('Info HTTP integration', () => {
   let app: NestFastifyApplication;
+  let applicationConfig: ApplicationConfig;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [ApplicationConfigModule, InfoModule],
     }).compile();
 
-    app = moduleRef.createNestApplication(new FastifyAdapter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    applicationConfig = moduleRef.get(ApplicationConfig);
+
+    app = await createFastifyTestApp(moduleRef);
   });
 
   afterEach(async () => {
@@ -49,7 +51,7 @@ describe('Info HTTP integration', () => {
         url: '/api/v1/info',
       });
 
-      expect(response.json().version).toBe('0.15.0-alpha');
+      expect(response.json().version).toBe(applicationConfig.version);
     });
 
     it('returns the environment', async () => {

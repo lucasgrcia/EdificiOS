@@ -5,6 +5,7 @@ import { ApplicationConfigModule } from './config/application-config.module';
 import { AuthenticationModule } from './authentication/authentication.module';
 import { HealthModule } from './health/health.module';
 import { InfoModule } from './info/info.module';
+import { OutboxModule } from './outbox/outbox.module';
 import { OperationsModule } from './operations/operations.module';
 import { CorrelationIdMiddleware } from './shared/http/correlation-id.middleware';
 import { HttpValidationPipe } from './shared/http/http-validation.pipe';
@@ -16,6 +17,7 @@ import { SharedModule } from './shared/shared.module';
     ApplicationConfigModule,
     SharedModule,
     OperationsModule,
+    OutboxModule,
     AuthenticationModule,
     HealthModule,
     InfoModule,

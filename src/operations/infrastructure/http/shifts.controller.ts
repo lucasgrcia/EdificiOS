@@ -5,12 +5,15 @@ import {
   NotFoundException,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
+import { JwtAuthenticationGuard } from '../../../authentication/infrastructure/http/jwt-authentication.guard';
 import { ShiftResult } from '../../application/shift-result';
 import { CloseShiftUseCase } from '../../application/close-shift-use-case';
 import { ShiftNotFoundError } from '../../domain/shift/shift-not-found';
 
+@UseGuards(JwtAuthenticationGuard)
 @Controller('api/v1/operations/shifts')
 export class ShiftsController {
   constructor(private readonly closeShiftUseCase: CloseShiftUseCase) {}

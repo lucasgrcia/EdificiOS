@@ -6,9 +6,11 @@ import {
   Param,
   Post,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { FastifyRequest } from 'fastify';
 
+import { JwtAuthenticationGuard } from '../../../authentication/infrastructure/http/jwt-authentication.guard';
 import {
   CaptureEvidenceResult,
   CaptureEvidenceUseCase,
@@ -18,6 +20,7 @@ import { ListEvidenceByEventUseCase } from '../../application/list-evidence-by-e
 import { CaptureEvidenceMultipartPipe } from './capture-evidence-multipart.pipe';
 import { ListEvidenceByEventParamsPipe } from './list-evidence-by-event-params.pipe';
 
+@UseGuards(JwtAuthenticationGuard)
 @Controller('api/v1/operations/events')
 export class EventsController {
   constructor(

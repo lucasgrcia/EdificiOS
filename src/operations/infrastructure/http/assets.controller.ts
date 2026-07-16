@@ -7,8 +7,10 @@ import {
   NotFoundException,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
+import { JwtAuthenticationGuard } from '../../../authentication/infrastructure/http/jwt-authentication.guard';
 import { AssetResult } from '../../application/asset-result';
 import { GetAssetByIdUseCase } from '../../application/get-asset-by-id-use-case';
 import { RegisterAssetUseCase } from '../../application/register-asset-use-case';
@@ -16,6 +18,7 @@ import { SiteNotFoundError } from '../../domain/site/site-not-found';
 import { RegisterAssetRequestDto } from './register-asset.dto';
 import { RegisterAssetRequestPipe } from './register-asset-request.pipe';
 
+@UseGuards(JwtAuthenticationGuard)
 @Controller('api/v1/operations/assets')
 export class AssetsController {
   constructor(

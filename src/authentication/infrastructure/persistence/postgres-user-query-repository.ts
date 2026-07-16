@@ -32,4 +32,28 @@ export class PostgresUserQueryRepository implements UserQueryRepository {
 
     return toAuthenticatedUserView(result.rows[0]);
   }
+
+  async findByEmail(
+    email: string,
+  ): Promise<ReturnType<typeof toAuthenticatedUserView> | null> {
+    const result = await this.pool.query<UserQueryRow>(
+      `
+        SELECT
+          id,
+          email,
+          display_name,
+          status,
+          created_at
+        FROM users
+        WHERE email = $1
+      `,
+      [email],
+    );
+
+    if (result.rowCount === 0) {
+      return null;
+    }
+
+    return toAuthenticatedUserView(result.rows[0]);
+  }
 }

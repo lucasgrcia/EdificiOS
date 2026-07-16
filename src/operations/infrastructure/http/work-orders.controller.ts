@@ -9,8 +9,10 @@ import {
   NotFoundException,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
+import { JwtAuthenticationGuard } from '../../../authentication/infrastructure/http/jwt-authentication.guard';
 import { CancelWorkOrderUseCase } from '../../application/cancel-work-order-use-case';
 import { CompleteWorkOrderUseCase } from '../../application/complete-work-order-use-case';
 import { CreateWorkOrderUseCase } from '../../application/create-work-order-use-case';
@@ -25,6 +27,7 @@ import { CreateWorkOrderRequestDto } from './create-work-order.dto';
 import { CreateWorkOrderRequestPipe } from './create-work-order-request.pipe';
 import { GetWorkOrderByIdParamsPipe } from './get-work-order-by-id-params.pipe';
 
+@UseGuards(JwtAuthenticationGuard)
 @Controller('api/v1/operations/work-orders')
 export class WorkOrdersController {
   constructor(

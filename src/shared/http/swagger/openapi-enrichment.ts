@@ -6,16 +6,19 @@ import {
   RequestBodyObject,
 } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
-import { AssignIncidentRequestDto } from '../../../operations/infrastructure/http/assign-incident.dto';
-import { CreateWorkOrderFromIncidentRequestDto } from '../../../operations/infrastructure/http/create-work-order-from-incident.dto';
-import { CreateWorkOrderRequestDto } from '../../../operations/infrastructure/http/create-work-order.dto';
-import { DetectIncidentRequestDto } from '../../../operations/infrastructure/http/detect-incident.dto';
-import { CreateNotificationRequestDto } from '../../../operations/infrastructure/http/notification.dto';
-import { RegisterActorRequestDto } from '../../../operations/infrastructure/http/register-actor.dto';
-import { RegisterAssetRequestDto } from '../../../operations/infrastructure/http/register-asset.dto';
-import { RegisterSiteRequestDto } from '../../../operations/infrastructure/http/register-site.dto';
-import { StartShiftRequestDto } from '../../../operations/infrastructure/http/start-shift.dto';
-import { CreateUserRequestDto } from '../../../authentication/infrastructure/http/create-user.dto';
+import {
+  AssignIncidentRequestDto,
+  CreateNotificationRequestDto,
+  CreateUserRequestDto,
+  CreateWorkOrderFromIncidentRequestDto,
+  CreateWorkOrderRequestDto,
+  DetectIncidentRequestDto,
+  LoginRequestDto,
+  RegisterActorRequestDto,
+  RegisterAssetRequestDto,
+  RegisterSiteRequestDto,
+  StartShiftRequestDto,
+} from './swagger-request-dtos';
 import { ProblemDetailsSchema } from './problem-details.schema';
 import {
   CURRENT_USER_AUTH_DESCRIPTION,
@@ -49,6 +52,8 @@ const PROBLEM_DETAILS_CONTENT = {
     schema: PROBLEM_DETAILS_REF,
   },
 };
+
+const OPERATIONS_BEARER_SECURITY = [{ [SECURITY_SCHEME_BEARER]: [] }];
 
 const STANDARD_ERROR_RESPONSES = {
   '400': {
@@ -85,6 +90,16 @@ const ENDPOINTS: EndpointDocumentation[] = [
     summary: 'API metadata',
     successStatus: '200',
     successDescription: 'API name, version and architecture metadata.',
+  },
+  {
+    path: '/api/v1/authentication/login',
+    method: 'post',
+    tags: ['Authentication'],
+    summary: 'Login',
+    requestBodyDto: LoginRequestDto,
+    successStatus: '200',
+    successDescription: 'Access token issued.',
+    security: [],
   },
   {
     path: '/api/v1/authentication/users',
@@ -469,7 +484,11 @@ export function enrichOpenApiDocument(document: OpenAPIObject): void {
 
     operation.tags = endpoint.tags;
     operation.summary = endpoint.summary;
-    operation.security = endpoint.security ?? [];
+    operation.security =
+      endpoint.security ??
+      (endpoint.path.startsWith('/api/v1/operations')
+        ? OPERATIONS_BEARER_SECURITY
+        : []);
 
     if (endpoint.description !== undefined) {
       operation.description = endpoint.description;

@@ -5,7 +5,7 @@ import { EndedAt } from './value-objects/ended-at';
 import { ShiftId } from './value-objects/shift-id';
 import { ShiftStatus, ShiftStatusLevel } from './value-objects/shift-status';
 import { ShiftType } from './value-objects/shift-type';
-import { SiteId } from './value-objects/site-id';
+import { SiteId } from '../site/value-objects/site-id';
 import { StartedAt } from './value-objects/started-at';
 
 export type ShiftDomainEvent = ShiftContinuityStarted | ShiftContinuityClosed;

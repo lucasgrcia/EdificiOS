@@ -1,8 +1,10 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 
+import { JwtAuthenticationGuard } from '../../../authentication/infrastructure/http/jwt-authentication.guard';
 import { DashboardView } from '../../application/dashboard-view';
 import { GetOperationsDashboardUseCase } from '../../application/get-operations-dashboard-use-case';
 
+@UseGuards(JwtAuthenticationGuard)
 @Controller('api/v1/operations/dashboard')
 export class DashboardController {
   constructor(

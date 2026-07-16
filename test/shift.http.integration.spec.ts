@@ -1,8 +1,8 @@
 import {
-  FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createFastifyTestApp } from './support/create-fastify-test-app';
 
 import { CloseShiftUseCase } from '../src/operations/application/close-shift-use-case';
 import { GetActiveShiftUseCase } from '../src/operations/application/get-active-shift-use-case';
@@ -18,6 +18,7 @@ import { ActiveShiftAlreadyExistsError } from '../src/operations/domain/shift/ac
 import { ShiftNotFoundError } from '../src/operations/domain/shift/shift-not-found';
 import { ShiftsController } from '../src/operations/infrastructure/http/shifts.controller';
 import { SitesController } from '../src/operations/infrastructure/http/sites.controller';
+import { operationsHttpTestAuthProviders } from './support/operations-http-test-auth';
 import { StartShiftRequestPipe } from '../src/operations/infrastructure/http/start-shift-request.pipe';
 
 describe('Shift HTTP integration', () => {
@@ -60,6 +61,7 @@ describe('Shift HTTP integration', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [SitesController, ShiftsController],
       providers: [
+        ...operationsHttpTestAuthProviders,
         StartShiftRequestPipe,
         {
           provide: StartShiftUseCase,
@@ -96,9 +98,7 @@ describe('Shift HTTP integration', () => {
       ],
     }).compile();
 
-    app = moduleRef.createNestApplication(new FastifyAdapter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    app = await createFastifyTestApp(moduleRef);
   });
 
   afterEach(async () => {

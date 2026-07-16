@@ -88,9 +88,8 @@ describe('Swagger HTTP integration', () => {
       expect(document.paths['/api/v1/info'].get).toBeDefined();
     });
 
-    it('contains version 0.15.0-alpha', () => {
+    it('contains version from ApplicationConfig', () => {
       expect(document.info.version).toBe(applicationConfig.version);
-      expect(document.info.version).toBe('0.15.0-alpha');
     });
 
     it('contains Problem Details as error schema', () => {
@@ -143,21 +142,23 @@ describe('Swagger HTTP integration', () => {
       expect(currentUser?.description).toBe(CURRENT_USER_AUTH_DESCRIPTION);
     });
 
-    it('keeps public authentication endpoints without security requirements', () => {
+    it('documents Operations endpoints as protected', () => {
+      const listIncidents = document.paths['/api/v1/operations/incidents']?.get;
+      const dashboard = document.paths['/api/v1/operations/dashboard']?.get;
+
+      expect(listIncidents?.security).toEqual([{ [SECURITY_SCHEME_BEARER]: [] }]);
+      expect(dashboard?.security).toEqual([{ [SECURITY_SCHEME_BEARER]: [] }]);
+    });
+
+    it('keeps login and public authentication endpoints without security requirements', () => {
+      const login = document.paths['/api/v1/authentication/login']?.post;
       const createUser = document.paths['/api/v1/authentication/users']?.post;
       const getUserById =
         document.paths['/api/v1/authentication/users/{id}']?.get;
 
+      expect(login?.security).toEqual([]);
       expect(createUser?.security).toEqual([]);
       expect(getUserById?.security).toEqual([]);
-    });
-
-    it('keeps Operations endpoints without security requirements', () => {
-      const listIncidents = document.paths['/api/v1/operations/incidents']?.get;
-      const dashboard = document.paths['/api/v1/operations/dashboard']?.get;
-
-      expect(listIncidents?.security).toEqual([]);
-      expect(dashboard?.security).toEqual([]);
     });
 
     it('keeps Health and Info endpoints without security requirements', () => {

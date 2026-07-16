@@ -1,9 +1,9 @@
-import {
-  BadRequestException,
-  Injectable,
-  PipeTransform,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
+import {
+  isHttpPayloadObject,
+  readRequiredString,
+} from '../../../shared/http/http-request-parsing';
 import { RegisterActorRequestDto } from './register-actor.dto';
 
 const ALLOWED_ACTOR_ROLES = [
@@ -20,38 +20,16 @@ export class RegisterActorRequestPipe
   implements PipeTransform<unknown, RegisterActorRequestDto>
 {
   transform(value: unknown): RegisterActorRequestDto {
-    if (!this.isObject(value)) {
+    if (!isHttpPayloadObject(value)) {
       throw new BadRequestException('Actor payload is required.');
     }
 
     return {
-      siteId: this.readRequiredString(value, 'siteId', 'Site id is required.'),
-      name: this.readRequiredString(value, 'name', 'Actor name is required.'),
+      siteId: readRequiredString(value, 'siteId', 'Site id is required.'),
+      name: readRequiredString(value, 'name', 'Actor name is required.'),
       role: this.readRole(value),
       status: this.readStatus(value),
     };
-  }
-
-  private isObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null;
-  }
-
-  private readRequiredString(
-    value: Record<string, unknown>,
-    field: string,
-    message: string,
-  ): string {
-    if (!(field in value) || typeof value[field] !== 'string') {
-      throw new BadRequestException(message);
-    }
-
-    const trimmed = value[field].trim();
-
-    if (trimmed.length === 0) {
-      throw new BadRequestException(message);
-    }
-
-    return trimmed;
   }
 
   private readRole(value: Record<string, unknown>): string {

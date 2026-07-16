@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type AxiosInstance } from 'axios';
 
 import { getAuthToken } from '../auth/authToken';
 import { toast } from '../toast/toastStore';
@@ -9,6 +9,16 @@ function registerNetworkErrorToast(error: unknown): void {
     const parsed = parseApiError(error);
     toast.error(parsed.title, parsed.description);
   }
+}
+
+function attachNetworkErrorInterceptor(client: AxiosInstance): void {
+  client.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      registerNetworkErrorToast(error);
+      return Promise.reject(error);
+    },
+  );
 }
 
 export const publicApiClient = axios.create({
@@ -37,18 +47,5 @@ authenticatedApiClient.interceptors.request.use((config) => {
   return config;
 });
 
-publicApiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    registerNetworkErrorToast(error);
-    return Promise.reject(error);
-  },
-);
-
-authenticatedApiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    registerNetworkErrorToast(error);
-    return Promise.reject(error);
-  },
-);
+attachNetworkErrorInterceptor(publicApiClient);
+attachNetworkErrorInterceptor(authenticatedApiClient);

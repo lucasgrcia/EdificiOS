@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import type { ActivityFeedEntryType } from '../../types/dashboard';
 import { incidentDetailsPath } from '../../routes/paths';
+import { formatDateTime } from '../../utils/formatDateTime';
 
 const typeStyles: Record<
   ActivityFeedEntryType,
@@ -20,19 +21,6 @@ type ActivityFeedItemProps = {
   timestamp: string;
   incidentId?: string;
 };
-
-function formatTimestamp(value: string): string {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat('es-AR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(date);
-}
 
 export function ActivityFeedItem({
   type,
@@ -68,7 +56,7 @@ export function ActivityFeedItem({
         <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
           {titleContent}
           <time className="shrink-0 text-xs text-slate-500">
-            {formatTimestamp(timestamp)}
+            {formatDateTime(timestamp)}
           </time>
         </div>
         <p className="mt-1 text-sm text-slate-600">{description}</p>

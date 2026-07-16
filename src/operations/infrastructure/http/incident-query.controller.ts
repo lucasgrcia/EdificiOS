@@ -4,8 +4,10 @@ import {
   NotFoundException,
   Param,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 
+import { JwtAuthenticationGuard } from '../../../authentication/infrastructure/http/jwt-authentication.guard';
 import { GetIncidentByIdUseCase } from '../../application/get-incident-by-id-use-case';
 import { GetIncidentTimelineUseCase } from '../../application/get-incident-timeline-use-case';
 import { IncidentView } from '../../application/incident-view';
@@ -15,6 +17,7 @@ import { GetIncidentByIdParamsPipe } from './get-incident-by-id-params.pipe';
 import { ListIncidentsQueryDto } from './list-incidents-query.dto';
 import { ListIncidentsQueryPipe } from './list-incidents-query.pipe';
 
+@UseGuards(JwtAuthenticationGuard)
 @Controller('api/v1/operations/incidents')
 export class IncidentQueryController {
   constructor(

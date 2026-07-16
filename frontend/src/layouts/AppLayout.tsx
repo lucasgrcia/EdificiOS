@@ -1,8 +1,10 @@
 import { useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../hooks/useAuth';
 import { Header } from '../components/layout/Header';
 import { Sidebar } from '../components/layout/Sidebar';
+import { ROUTES } from '../routes/paths';
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -10,7 +12,13 @@ type AppLayoutProps = {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
   const { logout, isAuthenticated } = useAuth();
+
+  function handleLogout() {
+    logout();
+    navigate(ROUTES.login, { replace: true });
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 lg:flex">
@@ -23,7 +31,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <Header
-          onLogout={logout}
+          onLogout={handleLogout}
           onMenuClick={() => {
             setSidebarOpen(true);
           }}

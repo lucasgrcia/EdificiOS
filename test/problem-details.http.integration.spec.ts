@@ -11,10 +11,11 @@ import {
 } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import {
-  FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+
+import { createFastifyTestApp } from './support/create-fastify-test-app';
 
 import {
   CORRELATION_ID_HEADER,
@@ -30,9 +31,7 @@ import {
   ProblemDetails,
 } from '../src/shared/http/problem-details';
 import { ProblemDetailsFilter } from '../src/shared/http/problem-details.filter';
-
-const UUID_V4_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+import { UUID_V4_PATTERN } from './support/uuid-patterns';
 
 @Controller('test')
 class ProblemProbeController {
@@ -82,9 +81,7 @@ describe('Problem Details HTTP integration', () => {
       imports: [ProblemDetailsTestModule],
     }).compile();
 
-    app = moduleRef.createNestApplication(new FastifyAdapter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    app = await createFastifyTestApp(moduleRef);
   });
 
   afterEach(async () => {

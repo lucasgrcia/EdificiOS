@@ -8,8 +8,10 @@ import {
   NotFoundException,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
+import { JwtAuthenticationGuard } from '../../../authentication/infrastructure/http/jwt-authentication.guard';
 import { CreateWorkOrderFromIncidentUseCase } from '../../application/create-work-order-from-incident-use-case';
 import { ListWorkOrdersByIncidentUseCase } from '../../application/list-work-orders-by-incident-use-case';
 import { WorkOrderResult } from '../../application/work-order-result';
@@ -20,6 +22,7 @@ import { CreateWorkOrderFromIncidentRequestDto } from './create-work-order-from-
 import { CreateWorkOrderFromIncidentRequestPipe } from './create-work-order-from-incident-request.pipe';
 import { ListWorkOrdersByIncidentParamsPipe } from './list-work-orders-by-incident-params.pipe';
 
+@UseGuards(JwtAuthenticationGuard)
 @Controller('api/v1/operations/incidents')
 export class IncidentWorkOrdersController {
   constructor(

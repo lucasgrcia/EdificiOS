@@ -4,6 +4,7 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createFastifyTestApp } from './support/create-fastify-test-app';
 import { OpenAPIObject } from '@nestjs/swagger/dist/interfaces';
 
 import { ApplicationConfig } from '../src/config/application-config';
@@ -22,7 +23,7 @@ describe('ApplicationConfig integration', () => {
       const applicationConfig = moduleRef.get(ApplicationConfig);
 
       expect(applicationConfig.name).toBe('EdificiOS API');
-      expect(applicationConfig.version).toBe('0.15.0-alpha');
+      expect(applicationConfig.version).toBe('0.18.0-alpha');
       expect(applicationConfig.environment).toBe('development');
       expect(applicationConfig.apiPrefix).toBe('/api/v1');
       expect(applicationConfig.swaggerPath).toBe('/api/docs');
@@ -52,9 +53,7 @@ describe('ApplicationConfig integration', () => {
         imports: [ApplicationConfigModule, InfoModule],
       }).compile();
 
-      app = moduleRef.createNestApplication(new FastifyAdapter());
-      await app.init();
-      await app.getHttpAdapter().getInstance().ready();
+      app = await createFastifyTestApp(moduleRef);
     });
 
     afterEach(async () => {

@@ -6,9 +6,35 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
-## [0.18.0-alpha] - 2026-07-14
+## [Unreleased]
 
-**Release Candidate.** Primera versión demostrable de punta a punta: backend operativo + cliente web funcional. Sin nuevas capacidades de dominio ni endpoints.
+### Changed
+
+#### Architecture Reviews post-RC (AR08–AR09)
+
+- **AR08:** `formatDateTime`, `isNonEmptyString`; interceptor Axios unificado; assets muertos eliminados; tipos `ParsedApiError` reutilizados.
+- **AR09:** `create-fastify-test-app`, `uuid-patterns`, fixtures auth frontend; 20 suites HTTP migradas al harness compartido.
+- Documentación: `architecture_review_08_frontend.md`, `architecture_review_09_testing.md`.
+
+#### Architecture Reviews post-RC (AR04–AR06)
+
+- **AR04:** catálogo único `swagger-request-dtos.ts`; factory `postgres-pool-factory.ts` para configuración Pool compartida.
+- **AR05:** helpers `validateRequiredPathParam` y `http-request-parsing` (`readRequiredString`); 14 pipes simplificados sin cambio de mensajes HTTP.
+- **AR06:** pools Operations y Authentication delegan a factory shared; sin cambio de esquema ni consultas.
+- Documentación: `architecture_review_04_shared_kernel.md`, `architecture_review_05_http_layer.md`, `architecture_review_06_persistence.md`.
+
+#### Architecture Reviews post-RC (AR01–AR03)
+
+- **AR01:** consolidado `SiteId` — eliminado duplicado en `shift/`; canonical en `site/value-objects/site-id.ts`.
+- **AR02:** eliminado provider duplicado `PostgresIncidentTimelineRepository`; exports innecesarios en `AuthenticationModule` y `OutboxModule`.
+- **AR03:** auditoría de acoplamiento entre bounded contexts — sin refactor (deuda Operations → Authentication documentada en P2).
+- Documentación: `docs/architecture_reviews/architecture_review_01_value_objects.md`, `architecture_review_02_dependency_injection.md`, `architecture_review_03_bounded_contexts.md`; backlog y estado actual actualizados.
+
+---
+
+## [0.18.0-alpha] - 2026-07-15
+
+**Release Candidate.** Primera versión demostrable de punta a punta: backend operativo + cliente web funcional + hardening de seguridad y outbox. Sin nuevas capacidades de dominio en Operations.
 
 ### Added
 
@@ -63,9 +89,53 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 
 ### Changed
 
-- `ApplicationConfig.version` alineada a `0.18.0-alpha` (coherente con Info y Swagger).
+- `ApplicationConfig.version` alineada a `0.18.0-alpha` (coherente con Info, Health y Swagger).
 - Pantallas Home, Login, Dashboard e Incident Details usan skeletons, empty states y `ErrorCard`.
 - Interceptor Axios muestra toast automático en errores de red.
+- Todos los endpoints de Operations requieren JWT válido (`Authorization: Bearer`).
+- Frontend: login por email contra `POST /authentication/login` (ya no JWT pegado manualmente).
+- Transactional Outbox completo: escritura en transacción + consumo asíncrono vía dispatcher.
+
+#### Release Candidate Hardening (PR1)
+
+- Tests de versión alineados con `ApplicationConfig` (`application-config`, `info`, `swagger`, `health`).
+- `GetHealthUseCase` consume `ApplicationConfig.version` (eliminada constante `0.13.0-alpha`).
+- Documentación: coherencia de versión en `05_current_status.md`, `architecture_backlog.md`, review Sprint 18.
+
+#### Release Candidate Hardening (PR2) — Login JWT
+
+- `POST /api/v1/authentication/login` — emisión de JWT a partir de email de usuario existente.
+- `LoginUseCase`, `LoginCommand`, `LoginResult`, puerto `JwtTokenIssuer`, `NestJwtTokenIssuer`.
+- `UserQueryRepository.findByEmail` en query de Authentication.
+- Sin passwords, refresh tokens, cookies ni roles.
+
+#### Release Candidate Hardening (PR3) — Frontend Login integrado
+
+- `LoginPage` reemplaza JWT manual por formulario de email.
+- `AuthContext.login()` — `POST /login` → token → `GET /me` → sesión persistida.
+- Tests frontend con Vitest + Testing Library (login, logout, `ProtectedRoute`).
+- `authenticatedApiClient` en llamadas autenticadas; sin cambios en backend.
+
+#### Release Candidate Hardening (PR4) — Operations protegidas con JWT
+
+- `@UseGuards(JwtAuthenticationGuard)` en todos los controllers de Operations.
+- Health, Info, Swagger y endpoints públicos de Authentication permanecen sin autenticación.
+- OpenAPI: endpoints `/api/v1/operations/*` documentados con Bearer Authentication.
+- Tests de protección JWT y endpoints públicos.
+
+#### Release Candidate Hardening (PR5) — Outbox Dispatcher
+
+- Módulo `src/outbox/` desacoplado de Operations: `OutboxDispatcher`, `OutboxProcessor`, handlers pluggables.
+- `PostgresOutboxDispatchRepository` — claim con `SKIP LOCKED`, reintentos, estados `processed` / `failed`.
+- `NotificationOutboxHandler` — pipeline MVP para eventos `workflow.flow.*` (sin email/webhook real).
+- `OutboxDispatcherRunner` — polling periódico (deshabilitado en tests).
+- Migración `011_outbox_dispatch.sql` (`retry_count`, `last_error`).
+
+#### Release Candidate Hardening (PR6) — Documentación final RC
+
+- CHANGELOG, `05_current_status.md` y `architecture_backlog.md` alineados con el estado real post-hardening.
+- Architecture Review final: `docs/architecture_reviews/release_candidate_hardening.md`.
+- Proyecto listo para etiquetar `0.18.0-alpha`.
 
 ### Removed
 
@@ -77,9 +147,15 @@ El formato sigue [Keep a Changelog](https://keepachangelog.com/).
 |--------|------------------------|
 | `ApplicationConfig` | ✔ |
 | `GET /api/v1/info` | ✔ |
+| `GET /api/v1/health` | ✔ |
 | Swagger (`/api/docs`) | ✔ |
+| OpenAPI JSON (`/api/docs-json`) | ✔ |
 | `package.json` (raíz y `frontend/`) | ✔ |
-| `GET /api/v1/health` | `0.13.0-alpha` (constante interna; deuda en backlog) |
+| Backend tests | 70 suites — 658 tests |
+| Frontend tests | 2 suites — 8 tests (Vitest) |
+| Login E2E | `POST /login` → JWT → `GET /me` → Dashboard |
+| Operations API | Protegida con JWT |
+| Outbox | Write + Dispatcher operativo |
 
 ---
 

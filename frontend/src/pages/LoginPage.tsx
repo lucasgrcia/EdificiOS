@@ -3,19 +3,23 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
+import { ErrorCard } from '../components/ErrorCard';
 import { PageTitle } from '../components/PageTitle';
 import { Section } from '../components/Section';
 import { useAuth } from '../hooks/useAuth';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { ROUTES } from '../routes/paths';
 import { useToast } from '../toast/ToastContainer';
+import { parseApiError, type ParsedApiError } from '../utils/parseApiError';
 
 export function LoginPage() {
-  const { isAuthenticated, setToken } = useAuth();
+  const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
-  const [tokenInput, setTokenInput] = useState('');
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loginError, setLoginError] = useState<ParsedApiError | null>(null);
 
   const redirectPath =
     (location.state as { from?: { pathname: string } } | null)?.from
@@ -25,23 +29,34 @@ export function LoginPage() {
     return <Navigate replace to={redirectPath} />;
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (tokenInput.trim() === '') {
+    if (email.trim() === '') {
       toast.error(
-        'Token requerido',
-        'Ingresá un JWT válido para continuar.',
+        'Email requerido',
+        'Ingresá un email válido para continuar.',
       );
       return;
     }
 
-    setToken(tokenInput);
-    toast.success(
-      'Sesión iniciada',
-      'El token fue guardado correctamente.',
-    );
-    navigate(redirectPath, { replace: true });
+    setLoginError(null);
+    setIsSubmitting(true);
+
+    try {
+      await login(email);
+      toast.success(
+        'Sesión iniciada',
+        'Tu acceso al panel operativo está listo.',
+      );
+      navigate(redirectPath, { replace: true });
+    } catch (error) {
+      const parsed = parseApiError(error);
+      setLoginError(parsed);
+      toast.error(parsed.title, parsed.description);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -49,27 +64,42 @@ export function LoginPage() {
       <Card>
         <Section className="space-y-6">
           <PageTitle
-            description="Infraestructura JWT preparada. El endpoint de login llegará en un sprint posterior."
+            description="Ingresá con el email de tu cuenta para acceder al panel operativo."
             title="Iniciar sesión"
           />
 
+          {loginError !== null && (
+            <ErrorCard
+              description={loginError.description}
+              title={loginError.title}
+            />
+          )}
+
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <label className="block space-y-2 text-sm" htmlFor="jwt-token">
-              <span className="font-medium text-slate-700">Token JWT</span>
-              <textarea
-                aria-label="Token JWT"
-                className="min-h-28 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus-visible:border-slate-500"
-                id="jwt-token"
+            <label className="block space-y-2 text-sm" htmlFor="login-email">
+              <span className="font-medium text-slate-700">Email</span>
+              <input
+                aria-label="Email"
+                autoComplete="email"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus-visible:border-slate-500"
+                disabled={isSubmitting}
+                id="login-email"
                 onChange={(event) => {
-                  setTokenInput(event.target.value);
+                  setEmail(event.target.value);
                 }}
-                placeholder="Pegá un Bearer JWT válido para acceder al dashboard"
-                value={tokenInput}
+                placeholder="demo@edificios.local"
+                type="email"
+                value={email}
               />
             </label>
 
-            <Button aria-label="Guardar token y continuar" className="w-full" type="submit">
-              Guardar token y continuar
+            <Button
+              aria-label="Iniciar sesión"
+              className="w-full"
+              disabled={isSubmitting}
+              type="submit"
+            >
+              {isSubmitting ? 'Iniciando sesión…' : 'Iniciar sesión'}
             </Button>
           </form>
         </Section>

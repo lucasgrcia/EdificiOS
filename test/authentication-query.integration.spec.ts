@@ -54,12 +54,45 @@ describe('Authentication query integration', () => {
       expect(queries[0].sql).toContain('FROM users');
       expect(queries[0].values).toEqual([userId]);
     });
+
+    it('returns null when user is not found by email', async () => {
+      const pool = {
+        query: jest.fn(async () => ({ rowCount: 0, rows: [] })),
+      };
+      const repository = new PostgresUserQueryRepository(pool as never);
+
+      const result = await repository.findByEmail('missing@edificios.local');
+
+      expect(result).toBeNull();
+    });
+
+    it('loads an authenticated user view by email', async () => {
+      const queries: Array<{ sql: string; values: unknown[] }> = [];
+      const pool = {
+        query: jest.fn(async (sql: string, values?: unknown[]) => {
+          queries.push({ sql: sql.trim(), values: values ?? [] });
+          return {
+            rowCount: 1,
+            rows: [userRow],
+          };
+        }),
+      };
+      const repository = new PostgresUserQueryRepository(pool as never);
+
+      const result = await repository.findByEmail(userRow.email);
+
+      expect(result).toEqual(expectedView);
+      expect(queries).toHaveLength(1);
+      expect(queries[0].sql).toContain('FROM users');
+      expect(queries[0].values).toEqual([userRow.email]);
+    });
   });
 
   describe('GetAuthenticatedUserUseCase', () => {
     function createHarness(view: AuthenticatedUserView | null) {
       const userQueryRepository: UserQueryRepository = {
         findById: jest.fn(async () => view),
+        findByEmail: jest.fn(async () => null),
       };
 
       return {

@@ -5,7 +5,7 @@ import { EndedAt } from '../src/operations/domain/shift/value-objects/ended-at';
 import { ShiftId } from '../src/operations/domain/shift/value-objects/shift-id';
 import { ShiftStatus } from '../src/operations/domain/shift/value-objects/shift-status';
 import { ShiftType } from '../src/operations/domain/shift/value-objects/shift-type';
-import { SiteId } from '../src/operations/domain/shift/value-objects/site-id';
+import { SiteId } from '../src/operations/domain/site/value-objects/site-id';
 import { StartedAt } from '../src/operations/domain/shift/value-objects/started-at';
 
 describe('Shift value objects', () => {

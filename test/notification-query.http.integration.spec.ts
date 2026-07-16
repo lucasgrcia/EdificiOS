@@ -1,8 +1,8 @@
 import {
-  FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createFastifyTestApp } from './support/create-fastify-test-app';
 
 import { GetNotificationByIdUseCase } from '../src/operations/application/get-notification-by-id-use-case';
 import { ListNotificationsUseCase } from '../src/operations/application/list-notifications-use-case';
@@ -10,6 +10,7 @@ import { NotificationView } from '../src/operations/application/notification-vie
 import { GetNotificationByIdParamsPipe } from '../src/operations/infrastructure/http/get-notification-by-id-params.pipe';
 import { ListNotificationsByActorParamsPipe } from '../src/operations/infrastructure/http/list-notifications-by-actor-params.pipe';
 import { NotificationQueryController } from '../src/operations/infrastructure/http/notification-query.controller';
+import { operationsHttpTestAuthProviders } from './support/operations-http-test-auth';
 
 describe('Notification query HTTP integration', () => {
   const actorId = '00000000-0000-0000-0000-000000000020';
@@ -48,6 +49,7 @@ describe('Notification query HTTP integration', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [NotificationQueryController],
       providers: [
+        ...operationsHttpTestAuthProviders,
         GetNotificationByIdParamsPipe,
         ListNotificationsByActorParamsPipe,
         {
@@ -61,9 +63,7 @@ describe('Notification query HTTP integration', () => {
       ],
     }).compile();
 
-    app = moduleRef.createNestApplication(new FastifyAdapter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    app = await createFastifyTestApp(moduleRef);
   });
 
   afterEach(async () => {

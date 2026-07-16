@@ -1,8 +1,8 @@
 import {
-  FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { createFastifyTestApp } from './support/create-fastify-test-app';
 
 import { CancelWorkOrderUseCase } from '../src/operations/application/cancel-work-order-use-case';
 import { CompleteWorkOrderUseCase } from '../src/operations/application/complete-work-order-use-case';
@@ -22,6 +22,7 @@ import { GetWorkOrderByIdParamsPipe } from '../src/operations/infrastructure/htt
 import { IncidentWorkOrdersController } from '../src/operations/infrastructure/http/incident-work-orders.controller';
 import { ListWorkOrdersByIncidentParamsPipe } from '../src/operations/infrastructure/http/list-work-orders-by-incident-params.pipe';
 import { WorkOrdersController } from '../src/operations/infrastructure/http/work-orders.controller';
+import { operationsHttpTestAuthProviders } from './support/operations-http-test-auth';
 
 describe('Work order HTTP integration', () => {
   const incidentId = '00000000-0000-0000-0000-000000000010';
@@ -92,6 +93,7 @@ describe('Work order HTTP integration', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [WorkOrdersController, IncidentWorkOrdersController],
       providers: [
+        ...operationsHttpTestAuthProviders,
         CreateWorkOrderRequestPipe,
         CreateWorkOrderFromIncidentRequestPipe,
         GetWorkOrderByIdParamsPipe,
@@ -127,9 +129,7 @@ describe('Work order HTTP integration', () => {
       ],
     }).compile();
 
-    app = moduleRef.createNestApplication(new FastifyAdapter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+    app = await createFastifyTestApp(moduleRef);
   });
 
   afterEach(async () => {

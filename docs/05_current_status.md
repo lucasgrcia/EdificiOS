@@ -1,8 +1,8 @@
 # Estado actual del proyecto
 
-Última actualización: 2026-07-14
+Última actualización: 2026-07-15
 
-Sprint 18 — **COMPLETADO**. **Release Candidate `0.18.0-alpha`.**
+Sprint 18 — **COMPLETADO**. **Release Candidate Hardening — COMPLETADO**. Versión **`0.18.0-alpha`** lista para etiquetar.
 
 ---
 
@@ -13,11 +13,13 @@ Sprint 18 — **COMPLETADO**. **Release Candidate `0.18.0-alpha`.**
 | Desarrollo | Activo |
 | Arquitectura | Estable |
 | Walking Skeleton | Completo |
-| Release Candidate | `0.18.0-alpha` — demostrable E2E |
-| Backend tests | 63 suites — 621 tests — 0 fallos |
+| Release Candidate | `0.18.0-alpha` — demostrable E2E con login real |
+| Backend tests | 70 suites — 658 tests — 0 fallos |
 | Backend build | OK |
-| Frontend | React + Vite — build OK — sin tests automatizados |
+| Frontend | React + Vite — build OK — Vitest (8 tests) |
 | Guía de uso | `docs/GUIA_USO.md` |
+| Architecture Review RC | `docs/architecture_reviews/release_candidate_hardening.md` |
+| Architecture Reviews post-RC | `docs/architecture_reviews/architecture_review_01_value_objects.md` … `architecture_review_09_testing.md` |
 
 ---
 
@@ -38,7 +40,7 @@ El sistema posee **ocho agregados operativos** en el bounded context `operations
 | **Timeline** | Read model cronológico por Incident | `events`, `event_evidences`, `work_orders`, `notifications`; enriquecido Sprint 12 |
 | **Authentication** | Identidad de usuario (query, command, JWT) | Bounded context independiente; tabla `users`; sin dependencia de Operations |
 
-Módulos transversales: `health`, `info`, `shared`, `config`.
+Módulos transversales: `health`, `info`, `shared`, `config`, `outbox`.
 
 Cadena operativa completa:
 
@@ -310,6 +312,17 @@ Timeline (GetIncidentTimelineUseCase)
 | PR3 | Incident Details UI: incident + timeline, navegación desde activity feed | ✔ |
 | PR4 | UX Polish: skeletons, empty/error states, toasts, responsive, accesibilidad | ✔ |
 | PR5 | Release Candidate: `0.18.0-alpha`, `GUIA_USO.md`, glosario, Architecture Review, backlog | ✔ |
+
+### Release Candidate Hardening
+
+| PR | Entregable | Estado |
+|----|------------|--------|
+| PR1 | Alineación de versión (`ApplicationConfig`, Health, tests, docs) | ✔ |
+| PR2 | `POST /api/v1/authentication/login` — emisión JWT | ✔ |
+| PR3 | Frontend login integrado (email → JWT → `/me` → Dashboard) | ✔ |
+| PR4 | Operations protegidas con `JwtAuthenticationGuard` + OpenAPI Bearer | ✔ |
+| PR5 | Outbox Dispatcher (`OutboxModule`, processor, handlers, reintentos) | ✔ |
+| PR6 | Documentación final RC + Architecture Review | ✔ |
 
 ---
 
@@ -649,9 +662,9 @@ Cliente web en `frontend/` — capa de presentación pura. **No modifica dominio
 | Pantalla | Ruta | APIs |
 |----------|------|------|
 | Home | `/` | `GET /api/v1/info` |
-| Login | `/login` | JWT manual (sin endpoint de credenciales) |
-| Dashboard | `/dashboard` | `GET /api/v1/operations/dashboard` |
-| Incident Viewer | `/incidents/:incidentId` | `GET incidents/:id`, `GET .../timeline` |
+| Login | `/login` | `POST /api/v1/authentication/login` → JWT → `GET /me` |
+| Dashboard | `/dashboard` | `GET /api/v1/operations/dashboard` (JWT requerido) |
+| Incident Viewer | `/incidents/:incidentId` | `GET incidents/:id`, `GET .../timeline` (público en UI; API Operations requiere JWT) |
 
 ### Arquitectura del cliente
 
@@ -662,17 +675,26 @@ Pages → Hooks (TanStack Query) → API (Axios) → Backend :3000
         ↓
 Components (Skeleton, EmptyState, ErrorCard, Toast)
         ↓
-Auth (JWT localStorage) + parseApiError (RFC 9457)
+Auth (login API + JWT localStorage + GET /me) + parseApiError (RFC 9457)
 ```
 
-**Rutas protegidas:** `ProtectedRoute` en `/dashboard` únicamente.
+**Rutas protegidas:** `ProtectedRoute` en `/dashboard`.
+
+**Flujo de autenticación E2E:**
+
+```
+/login (email) → POST /authentication/login → token
+      → GET /authentication/me → Dashboard
+      → refresh navegador → sesión persistida (localStorage)
+      → logout → /login
+```
 
 **Limitaciones conocidas:**
 
-- Login = pegar JWT manualmente.
 - Dashboard sin selector de `actorId` (notifications vacías por defecto).
 - `priority` y `site` muestran `—` en Incident Viewer.
 - Solo lectura: sin CRUD de Incident ni Assets desde la UI.
+- Sin passwords ni refresh tokens.
 
 **Coherencia de versión `0.18.0-alpha`:**
 
@@ -680,14 +702,14 @@ Auth (JWT localStorage) + parseApiError (RFC 9457)
 |--------|---------|
 | `ApplicationConfig` | `0.18.0-alpha` |
 | `GET /api/v1/info` | `0.18.0-alpha` |
-| Swagger | `0.18.0-alpha` |
-| `GET /api/v1/health` | `0.13.0-alpha` (deuda; ver backlog) |
+| `GET /api/v1/health` | `0.18.0-alpha` |
+| Swagger / OpenAPI JSON | `0.18.0-alpha` |
 
 **Demostración E2E:** ver `docs/GUIA_USO.md`.
 
-Architecture Review: `docs/architecture_reviews/sprint_18_frontend_foundation.md`.
+Architecture Review: `docs/architecture_reviews/sprint_18_frontend_foundation.md`, `docs/architecture_reviews/release_candidate_hardening.md`.
 
-Estado: **operativo** (Sprint 18 PR1–PR5).
+Estado: **operativo** (Sprint 18 + RC Hardening completos).
 
 ---
 
@@ -699,7 +721,7 @@ PostgreSQL directo (`pg`). Sin ORM. Sin Foreign Keys entre agregados.
 |-------|-----|
 | `incidents` | Proyección del agregado Incident (`assetId`, `shiftId`, `actorId` en jsonb) |
 | `events` | Event Log append-only |
-| `outbox` | Mensajes pendientes de publicación |
+| `outbox` | Transactional Outbox: escritura en transacción + dispatch asíncrono (`retry_count`, `last_error`, `processed_at`) |
 | `evidences` | Metadata de pruebas físicas |
 | `event_evidences` | Relación hecho ↔ evidencia |
 | `sites` | Edificios registrados |
@@ -717,7 +739,8 @@ Migraciones en `src/operations/infrastructure/migrations/` y `src/authentication
 ## Tests
 
 ```
-63 test suites — 621 tests — 0 fallos
+70 test suites — 658 tests backend — 0 fallos
+ 2 test suites —   8 tests frontend (Vitest)
 ```
 
 | Área | Archivos |
@@ -725,13 +748,15 @@ Migraciones en `src/operations/infrastructure/migrations/` y `src/authentication
 | Dominio Site / Asset / Shift / Actor / WorkOrder / Notification | `site.spec.ts`, `asset.spec.ts`, `shift.spec.ts`, `actor.spec.ts`, `work-order.spec.ts`, `notification.spec.ts` |
 | Dominio Incident | `incident-aggregate-replay.spec.ts`, `incident-p0-guards.spec.ts` |
 | Dominio Evidence | `evidence.spec.ts` |
-| Casos de uso | `detect-incident`, `assign-incident`, `resolve-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order`, `create-notification`, `notification-query`, `get-incident-timeline`, `get-operations-dashboard`, `create-user` |
-| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `notification-query.http`, `dashboard.http`, `health.http`, `info.http`, `correlation-id.http`, `problem-details.http`, `http-validation.http`, `swagger.http`, `authentication-query.http`, `create-user.http`, `current-user.http` |
+| Casos de uso | `detect-incident`, `assign-incident`, `resolve-incident`, `incident-lifecycle`, `capture-evidence`, `shift-use-cases`, `register-asset-use-case`, `work-order-use-cases`, `incident-work-order`, `create-notification`, `notification-query`, `get-incident-timeline`, `get-operations-dashboard`, `create-user`, `login-use-case`, `outbox-dispatcher`, `outbox-processor` |
+| HTTP | `site.http`, `asset.http`, `shift.http`, `actor.http`, `capture-evidence.http`, `incident-query.http`, `work-orders.http`, `notification.http`, `notification-query.http`, `dashboard.http`, `health.http`, `info.http`, `correlation-id.http`, `problem-details.http`, `http-validation.http`, `swagger.http`, `authentication-query.http`, `create-user.http`, `current-user.http`, `login.http`, `operations-jwt-protection.http` |
 | API Platform | `problem-details.http.integration.spec.ts`, `http-validation.integration.spec.ts`, `swagger.http.integration.spec.ts`, `application-config.integration.spec.ts` |
-| Authentication | `authentication-query.integration.spec.ts`, `authentication-query.http.integration.spec.ts`, `create-user.integration.spec.ts`, `create-user.http.integration.spec.ts`, `current-user.http.integration.spec.ts`, `jwt-authentication-context.integration.spec.ts`, `jwt-authentication-guard.integration.spec.ts` |
+| Authentication | `authentication-query.integration.spec.ts`, `authentication-query.http.integration.spec.ts`, `create-user.integration.spec.ts`, `create-user.http.integration.spec.ts`, `current-user.http.integration.spec.ts`, `jwt-authentication-context.integration.spec.ts`, `jwt-authentication-guard.integration.spec.ts`, `login-use-case.integration.spec.ts`, `login.http.integration.spec.ts` |
+| Outbox | `outbox-dispatcher.integration.spec.ts`, `outbox-processor.integration.spec.ts`, `postgres-outbox-dispatch-repository.integration.spec.ts`, `notification-outbox-handler.integration.spec.ts` |
 | Observability | `application-logger.integration.spec.ts`, `application-metrics.integration.spec.ts` |
 | Repositorios / Query | `postgres-*-repository.integration.spec.ts`, `postgres-incident-timeline-repository.integration.spec.ts` |
 | Transacciones | `postgres-operations-transaction-runner.integration.spec.ts` |
+| Frontend | `LoginPage.test.tsx`, `AuthContext.test.tsx` (Vitest) |
 
 Los tests no requieren PostgreSQL en ejecución (usan mocks).
 
@@ -742,7 +767,7 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - Monolito modular, bounded context `operations` + módulos transversales (`health`, `info`, `shared`, `config`, `authentication`).
 - Clean Architecture: `domain → application → infrastructure`.
 - DDD táctico: agregados, Value Objects, Domain Events.
-- Transactional Outbox + Event Log como fuente de verdad (Incident).
+- Transactional Outbox completo: Event Log + Outbox write en transacción + **Outbox Dispatcher** (`src/outbox/`) con handlers pluggables y reintentos.
 - Site y Asset: persistencia CRUD inmutable (`register` / `rehydrate`).
 - WorkOrder: agregado independiente; referencia Incident por identidad sin acoplamiento.
 - Notification: agregado independiente (commands) + read model `NotificationView` (queries); CQRS ligero sin eventos de dominio.
@@ -751,8 +776,9 @@ Los tests no requieren PostgreSQL en ejecución (usan mocks).
 - Health / Info: módulos independientes de Operations; Health verifica pool PostgreSQL; Info expone metadatos constantes.
 - Observability: Correlation ID + Application Logger + Application Metrics en `SharedModule` (Sprint 14); propagación a Event Log y Outbox.
 - API Platform: Problem Details (RFC 9457) + HTTP Validation global + Swagger/OpenAPI + `ApplicationConfig` (Sprint 15).
-- Authentication: query/command CQRS + JWT (`JWTAuthenticationContext`) + guard HTTP + Swagger Bearer; `GET /me` protegido (Sprint 16–17).
-- **Frontend:** cliente React demostrable; consume API existente sin lógica de negocio (Sprint 18).
+- Authentication: query/command CQRS + JWT (`JWTAuthenticationContext`) + `POST /login` + guard HTTP + Swagger Bearer; `GET /me` y **todos los endpoints Operations** protegidos (Sprint 16–17 + RC Hardening).
+- **Outbox:** bounded context `outbox` independiente; dispatcher no importa dominio Operations (RC Hardening PR5).
+- **Frontend:** cliente React con login real por email; consume API con JWT (Sprint 18 + RC Hardening PR3).
 - Query repositories: `IncidentQuery`, `EvidenceQuery`, `EventQuery`, `WorkOrderQuery`, `NotificationQuery`, `IncidentTimeline`.
 - Evidence respalda Domain Events, no Incident (ADR-006).
 - Site es agregado explícito; Asset referencia Site por identidad (ADR-007).
@@ -763,13 +789,13 @@ Documentación de decisiones: `docs/architecture_decisions/`.
 
 Glosario ubicuo: `docs/glossary.md`. Deuda arquitectónica: `docs/architecture_backlog.md`.
 
-Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, `docs/architecture_reviews/sprint_11_notifications.md`, `docs/architecture_reviews/sprint_12_notification_queries.md`, `docs/architecture_reviews/sprint_13_operational_endpoints.md`, `docs/architecture_reviews/sprint_14_observability.md`, `docs/architecture_reviews/sprint_15_api_platform.md`, `docs/architecture_reviews/sprint_16_authentication_foundation.md`, `docs/architecture_reviews/sprint_17_authentication.md`, `docs/architecture_reviews/sprint_18_frontend_foundation.md`.
+Architecture Reviews: `docs/architecture_reviews/sprint_10_timeline.md`, … `sprint_18_frontend_foundation.md`, `release_candidate_audit.md` (pre-hardening), **`release_candidate_hardening.md`** (RC final).
 
 ---
 
 ## Deliberadamente ausente
 
-- Login / passwords / emisión de JWT / refresh tokens / autorización por roles (validación JWT operativa en `GET /me`; frontend acepta JWT pegado manualmente)
+- Passwords / refresh tokens / roles / autorización granular (login por email + JWT operativo; sin verificación de credenciales)
 - Sincronización offline
 - Concurrencia optimista
 - Event Bus distribuido (RabbitMQ, Redis)
@@ -792,7 +818,7 @@ Resumen de ítems P1 activos:
 
 - Event Log incompleto para replay (`assetId`, `shiftId`, `actorId` en `workflow.flow.detected`)
 - Integridad referencial asimétrica (Site, Actor)
-- `SiteId` y `ActorId` duplicados en dominio
+- `ActorId` duplicado en dominio (`actor/` vs `evidence/` — `SiteId` resuelto en AR01)
 - Concurrencia optimista y TOCTOU
 - Proyecciones legacy, errores HTTP, tests HTTP de Incident
 
@@ -808,8 +834,8 @@ Deuda futura Sprint 14 (Observability): integración Prometheus, exportador Open
 
 Deuda futura Sprint 15 (API Platform): autorización, rate limiting, versionado múltiple (v2), generación automática de SDKs OpenAPI, configuración desde variables de entorno.
 
-Deuda futura Sprint 17 (Authentication): refresh tokens, password hashing, login credentials, roles, permissions, authorization policies.
+Deuda futura Sprint 17 (Authentication): refresh tokens, password hashing, roles, permissions, authorization policies.
 
-Deuda futura Sprint 18 (Frontend): login real, refresh token, actor selector, CRUD Incident/Assets desde UI, filtros, paginación, tests E2E, API URL en producción.
+Deuda futura Sprint 18 (Frontend): refresh token, actor selector, CRUD Incident/Assets desde UI, filtros, paginación, tests E2E, API URL en producción.
 
 Ver listado completo, justificaciones y P2 en `docs/architecture_backlog.md`.

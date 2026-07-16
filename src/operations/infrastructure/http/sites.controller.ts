@@ -8,8 +8,10 @@ import {
   NotFoundException,
   Param,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 
+import { JwtAuthenticationGuard } from '../../../authentication/infrastructure/http/jwt-authentication.guard';
 import { AssetResult } from '../../application/asset-result';
 import { ActorResult } from '../../application/actor-result';
 import { GetActiveShiftUseCase } from '../../application/get-active-shift-use-case';
@@ -29,6 +31,7 @@ import { RegisterSiteRequestPipe } from './register-site-request.pipe';
 import { StartShiftRequestDto } from './start-shift.dto';
 import { StartShiftRequestPipe } from './start-shift-request.pipe';
 
+@UseGuards(JwtAuthenticationGuard)
 @Controller('api/v1/operations/sites')
 export class SitesController {
   constructor(

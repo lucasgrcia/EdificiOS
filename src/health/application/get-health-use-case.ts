@@ -1,8 +1,7 @@
 import { Pool } from 'pg';
 
+import { ApplicationConfig } from '../../config/application-config';
 import { HealthView } from './health-view';
-
-const HEALTH_VERSION = '0.13.0-alpha';
 
 export type Clock = {
   now(): Date;
@@ -11,6 +10,7 @@ export type Clock = {
 export type GetHealthUseCaseDependencies = {
   pool: Pool;
   clock: Clock;
+  applicationConfig: ApplicationConfig;
 };
 
 export class GetHealthUseCase {
@@ -22,7 +22,7 @@ export class GetHealthUseCase {
     return {
       status: 'UP',
       timestamp: this.dependencies.clock.now().toISOString(),
-      version: HEALTH_VERSION,
+      version: this.dependencies.applicationConfig.version,
       checks: {
         database: 'UP',
         operations: 'UP',

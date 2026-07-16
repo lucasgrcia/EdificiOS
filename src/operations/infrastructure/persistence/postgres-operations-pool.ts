@@ -1,11 +1,10 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { Pool } from 'pg';
+
+import { createPostgresPool } from '../../../shared/persistence/postgres-pool-factory';
 
 @Injectable()
 export class PostgresOperationsPool implements OnModuleDestroy {
-  readonly pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-  });
+  readonly pool = createPostgresPool();
 
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();

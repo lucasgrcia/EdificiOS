@@ -1,21 +1,10 @@
+import { formatDateTime } from '../../utils/formatDateTime';
+
 type NotificationItemProps = {
   message: string;
   type: string;
   createdAt: string;
 };
-
-function formatCreatedAt(value: string): string {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat('es-AR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(date);
-}
 
 export function NotificationItem({
   message,
@@ -32,7 +21,7 @@ export function NotificationItem({
           </p>
         </div>
         <time className="shrink-0 text-xs text-slate-500">
-          {formatCreatedAt(createdAt)}
+          {formatDateTime(createdAt)}
         </time>
       </div>
     </li>
